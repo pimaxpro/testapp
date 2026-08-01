@@ -69,7 +69,7 @@ class UIComponent:
 
     @staticmethod
     def render_output_section():
-        """Khu vực Output: Đúng 1 box duy nhất vừa hiển thị vừa chỉnh sửa"""
+        """Hiển thị box st.code chuẩn native đẹp nhất"""
         st.markdown("### 2. Mã LaTeX Trích Xuất")
         
         if "result" in st.session_state and st.session_state["result"]:
@@ -78,16 +78,9 @@ class UIComponent:
             if "\\begin{tkz" in latex_code or "\\begin{tikzpicture}" in latex_code:
                 st.warning("Phát hiện mã đồ thị / Bảng biến thiên (TikZ/tkz-tab)", icon=":material/draw:")
             
-            # ĐÂY LÀ BOX DUY NHẤT: Vừa đẹp như code box vừa gõ/chỉnh sửa trực tiếp được
-            edited_code = st.text_area(
-                "LaTeX Code Editor", 
-                value=latex_code, 
-                height=520, 
-                label_visibility="collapsed"
-            )
-            
-            if edited_code != latex_code:
-                st.session_state["result"] = edited_code
+            # Khôi phục nguyên bản st.code với highlight màu sắc, số dòng và nút copy
+            st.code(latex_code, language="latex", line_numbers=True)
+
         else:
             UIComponent.render_empty_state()
 
