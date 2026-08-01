@@ -4,7 +4,6 @@ import json
 import base64
 import streamlit as st
 import streamlit.components.v1 as components
-from PIL import Image
 from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
@@ -17,16 +16,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Giao diện phẳng
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
-        # 1. Khởi tạo Session State chính xác
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
-        if "input_images" not in st.session_state:
-            st.session_state["input_images"] = []
         if "uploader_key" not in st.session_state:
             st.session_state["uploader_key"] = 0
 
@@ -47,53 +42,110 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Dữ liệu đầu vào")
 
-            # --- KHUNG EDITOR DÁN ẢNH CHUẨN ĐỒNG BỘ ---
-            st.caption("📄 **Khung dán bài toán:** Click vào khung bên dưới và bấm `Ctrl + V` để dán ảnh (dán liên tiếp nhiều ảnh):")
+            st.caption("📄 **Khung dán bài toán (Word Editor):** Click chuột vào khung trắng bên dưới và bấm `Ctrl + V` để dán ảnh:")
             
-            pasted_b64 = components.html(
+            # Khung Editor chuẩn Word
+            word_editor_component = components.html(
                 """
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.4.0/dist/streamlit-component-lib.js"></script>
                     <style>
-                        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-                        #editor {
-                            border: 2px dashed #6366F1;
-                            border-radius: 8px;
-                            background-color: #F5F3FF;
-                            min-height: 100px;
-                            padding: 16px;
+                        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+                        #editor-container {
+                            border: 2px dashed #818CF8;
+                            border-radius: 10px;
+                            background-color: #FFFFFF;
+                            min-height: 160px;
+                            padding: 14px;
                             outline: none;
-                            font-size: 14px;
-                            color: #4338CA;
-                            text-align: center;
-                            font-weight: 600;
-                            cursor: pointer;
                             box-sizing: border-box;
-                            user-select: none;
+                            transition: all 0.2s ease;
                         }
-                        #editor:focus {
+                        #editor-container:focus-within {
                             border-color: #4F46E5;
-                            background-color: #EEF2FF;
+                            background-color: #FAFAFA;
+                            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+                        }
+                        .placeholder {
+                            color: #94A3B8;
+                            font-size: 14px;
+                            font-weight: 500;
+                            pointer-events: none;
+                            text-align: center;
+                            padding-top: 40px;
+                        }
+                        #editor-content {
+                            outline: none;
+                            min-height: 130px;
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 10px;
+                            align-items: center;
+                        }
+                        .pasted-img-wrapper {
+                            position: relative;
+                            display: inline-block;
+                        }
+                        .pasted-img-wrapper img {
+                            max-width: 220px;
+                            max-height: 180px;
+                            border-radius: 6px;
+                            border: 1px solid #CBD5E1;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                            vertical-align: middle;
+                        }
+                        .del-btn {
+                            position: absolute;
+                            top: -6px;
+                            right: -6px;
+                            background: #EF4444;
+                            color: white;
+                            border: none;
+                            border-radius: 50%;
+                            width: 20px;
+                            height: 20px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: bold;
                         }
                     </style>
                 </head>
                 <body>
-                    <div id="editor" tabindex="0">
-                        📋 Nhấp chuột vào đây rồi nhấn Ctrl + V để DÁN ẢNH
+                    <div id="editor-container">
+                        <div id="editor-content" contenteditable="true">
+                            <div class="placeholder" id="ph">📋 Nhấp chuột vào đây rồi nhấn <b>Ctrl + V</b> để DÁN ẢNH</div>
+                        </div>
                     </div>
 
                     <script>
-                        const editor = document.getElementById('editor');
-                        
+                        const container = document.getElementById('editor-container');
+                        const content = document.getElementById('editor-content');
+                        const ph = document.getElementById('ph');
+                        let imgList = [];
+
+                        function syncData() {
+                            Streamlit.setComponentValue(JSON.stringify(imgList));
+                            const h = Math.max(170, container.scrollHeight + 20);
+                            Streamlit.setFrameHeight(h);
+                        }
+
                         window.addEventListener('load', () => {
-                            Streamlit.setFrameHeight(110);
-                            editor.focus();
+                            Streamlit.setFrameHeight(170);
                         });
 
-                        editor.addEventListener('paste', (e) => {
+                        content.addEventListener('focus', () => {
+                            if (ph) ph.style.display = 'none';
+                        });
+
+                        content.addEventListener('paste', (e) => {
                             e.preventDefault();
+                            if (ph) ph.style.display = 'none';
+
                             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
                             for (let item of items) {
                                 if (item.type.indexOf('image') !== -1) {
@@ -101,22 +153,35 @@ class MathOCRApp:
                                     const reader = new FileReader();
                                     reader.onload = (evt) => {
                                         const b64 = evt.target.result;
-                                        // Gửi dữ liệu về cho Streamlit ngay lập tức
-                                        Streamlit.setComponentValue(b64);
+                                        
+                                        // Tạo thẻ bọc ảnh + nút xóa nhỏ góc ảnh
+                                        const wrapper = document.createElement('div');
+                                        wrapper.className = 'pasted-img-wrapper';
+                                        
+                                        const img = document.createElement('img');
+                                        img.src = b64;
+
+                                        const delBtn = document.createElement('button');
+                                        delBtn.className = 'del-btn';
+                                        delBtn.innerText = '×';
+                                        delBtn.onclick = (e) => {
+                                            e.stopPropagation();
+                                            wrapper.remove();
+                                            imgList = imgList.filter(item => item !== b64);
+                                            if (content.children.length === 0 && ph) {
+                                                ph.style.display = 'block';
+                                            }
+                                            syncData();
+                                        };
+
+                                        wrapper.appendChild(img);
+                                        wrapper.appendChild(delBtn);
+                                        content.appendChild(wrapper);
+
+                                        imgList.push(b64);
+                                        syncData();
                                     };
                                     reader.readAsDataURL(file);
-
-                                    editor.style.backgroundColor = '#D1FAE5';
-                                    editor.style.borderColor = '#10B981';
-                                    editor.style.color = '#065F46';
-                                    editor.innerText = '✅ Đã nhận ảnh! Thầy có thể Ctrl + V tiếp...';
-                                    setTimeout(() => {
-                                        editor.style.backgroundColor = '#F5F3FF';
-                                        editor.style.borderColor = '#6366F1';
-                                        editor.style.color = '#4338CA';
-                                        editor.innerText = '📋 Nhấp chuột vào đây rồi nhấn Ctrl + V để DÁN ẢNH';
-                                    }, 1000);
-                                    break;
                                 }
                             }
                         });
@@ -124,51 +189,27 @@ class MathOCRApp:
                 </body>
                 </html>
                 """,
-                height=115
+                height=175
             )
 
-            # Xử lý nạp ảnh vào Session State khi phát hiện dữ liệu dán
-            if pasted_b64 and isinstance(pasted_b64, str) and pasted_b64.startswith("data:image"):
+            # Rút mảng ảnh từ Khung Editor
+            editor_images = []
+            if word_editor_component:
                 try:
-                    _, encoded = pasted_b64.split(",", 1)
-                    file_bytes = base64.b64decode(encoded)
-                    
-                    # Tránh lưu trùng lặp dữ liệu
-                    if not any(f.get("bytes") == file_bytes for f in st.session_state["input_images"]):
-                        preview_img = Image.open(io.BytesIO(file_bytes))
-                        img_count = len(st.session_state["input_images"]) + 1
-                        st.session_state["input_images"].append({
-                            "name": f"Pasted_Image_{img_count}.png",
-                            "bytes": file_bytes,
-                            "mime": "image/png",
-                            "preview": preview_img
-                        })
-                        st.toast(f"Đã nhận ảnh {img_count}!", icon="📋")
-                        st.rerun()
-                except Exception as e:
+                    raw_b64_list = json.loads(word_editor_component)
+                    for idx, b64_str in enumerate(raw_b64_list):
+                        if b64_str.startswith("data:image"):
+                            _, encoded = b64_str.split(",", 1)
+                            file_bytes = base64.b64decode(encoded)
+                            editor_images.append({
+                                "name": f"Pasted_Image_{idx+1}.png",
+                                "bytes": file_bytes,
+                                "mime": "image/png"
+                            })
+                except Exception:
                     pass
 
-            st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-
-            # --- PREVIEW DANH SÁCH ẢNH ĐÃ DÁN / UPLOAD (KHẮC PHỤC TRIỆT ĐỂ LỖI THIẾU ẢNH) ---
-            if st.session_state["input_images"]:
-                st.markdown(f"🖼️ **Danh sách ảnh chuẩn bị Convert ({len(st.session_state['input_images'])} ảnh):**")
-                grid = st.columns(3)
-                for idx, item in enumerate(list(st.session_state["input_images"])):
-                    with grid[idx % 3]:
-                        with st.container(border=True):
-                            if item.get("preview"):
-                                st.image(item["preview"], caption=item["name"], use_container_width=True)
-                            elif item["mime"] == "application/pdf":
-                                st.write(f"📄 `{item['name']}`")
-                            
-                            if st.button("🗑️ Xóa", key=f"del_img_{idx}", use_container_width=True):
-                                st.session_state["input_images"].pop(idx)
-                                st.rerun()
-            else:
-                st.info("Chưa có ảnh nào trong bộ nhớ. Thầy nhấp vào khung màu tím ở trên rồi bấm **Ctrl + V** nhé.", icon="ℹ️")
-
-            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
             # --- EDITOR YÊU CẦU BỔ SUNG ---
             st.caption("💡 **Yêu cầu bổ sung cho AI:**")
@@ -184,7 +225,7 @@ class MathOCRApp:
             )
             st.session_state["extra_notes_val"] = extra_prompt
 
-            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
             # --- HÀNG NÚT THAO TÁC UPLOAD & CONVERT ---
             act_col1, act_col2, act_col3 = st.columns([5, 3.5, 3.5])
@@ -204,28 +245,18 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # Upload file từ máy
+            # Tổng hợp ảnh từ Khung Editor + File Upload từ máy
+            final_input_list = list(editor_images)
             if uploaded_files:
-                has_new = False
                 for file in uploaded_files:
-                    file_bytes = file.getvalue()
-                    mime_type = file.type
-                    if not any(f.get("name") == file.name for f in st.session_state["input_images"]):
-                        preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
-                        st.session_state["input_images"].append({
-                            "name": file.name,
-                            "bytes": file_bytes,
-                            "mime": mime_type,
-                            "preview": preview_img
-                        })
-                        has_new = True
-                if has_new:
-                    st.session_state["uploader_key"] += 1
-                    st.rerun()
+                    final_input_list.append({
+                        "name": file.name,
+                        "bytes": file.getvalue(),
+                        "mime": file.type
+                    })
 
-            # Xóa sạch
+            # Nút Xóa tất cả
             if btn_clear_all:
-                st.session_state["input_images"] = []
                 st.session_state["uploader_key"] += 1
                 st.rerun()
 
@@ -233,15 +264,15 @@ class MathOCRApp:
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
-                elif not st.session_state["input_images"]:
-                    st.error("Vui lòng dán ảnh vào khung ở trên hoặc chọn file từ máy!", icon="⚠️")
+                elif not final_input_list:
+                    st.error("Vui lòng dán ảnh vào khung trắng Word Editor hoặc chọn file ở bên dưới!", icon="⚠️")
                 else:
                     with st.spinner("Đang xử lý cấu trúc toán học..."):
                         try:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             
                             result_code = processor.process(
-                                input_data=st.session_state["input_images"],
+                                input_data=final_input_list,
                                 model=selected_model,
                                 extra_prompt=extra_prompt,
                                 add_solution=add_solution
