@@ -6,19 +6,73 @@ import io
 import time
 
 # -----------------------------------------------------------------------------
-# Cấu hình Trang Web Streamlit
+# Cấu hình Trang Web & Custom CSS Trang trí Siêu Đẹp
 # -----------------------------------------------------------------------------
-st.set_page_config(page_title="Math OCR - Chuyển ảnh sang LaTeX", page_icon="🧮", layout="wide")
+st.set_page_config(
+    page_title="Math OCR Pro - Image to LaTeX", 
+    page_icon="🧮", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# Style CSS tùy chỉnh theo phong cách Modern Dark/Light Sleek
 st.markdown("""
     <style>
-    .main .block-container { padding-top: 2rem; }
-    .stCodeBlock { border-radius: 8px; }
+    /* Bố cục chung */
+    .main .block-container { 
+        padding-top: 1.5rem; 
+        padding-bottom: 2rem;
+        max-width: 95%;
+    }
+    
+    /* Style Card Container cho 2 Cột */
+    .css-card {
+        background-color: var(--background-secondary-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+    }
+    
+    /* Header & Badge Styling */
+    .header-title {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        background: linear-gradient(90deg, #4F46E5, #06B6D4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0px;
+    }
+    
+    /* Nút bấm chuyển đổi chính */
+    .stButton > button {
+        border-radius: 10px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        background: linear-gradient(90deg, #4F46E5, #3B82F6);
+        border: none;
+        color: white;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+    }
+
+    /* Style khung hiển thị Code */
+    .stCodeBlock {
+        border-radius: 10px !important;
+        border: 1px solid rgba(79, 70, 229, 0.2) !important;
+    }
+    
+    /* Ẩn bớt footer mặc định */
+    footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# System Instruction chuẩn hóa cho Math OCR & LaTeX
+# System Instruction cho Math OCR & LaTeX
 # -----------------------------------------------------------------------------
 SYSTEM_INSTRUCTION = """
 Bạn là một chuyên gia OCR Toán học nâng cao và biên soạn tài liệu LaTeX chuyên nghiệp.
@@ -33,16 +87,12 @@ Quy tắc bắt buộc:
 """
 
 def is_vision_model(model_name: str) -> bool:
-    """Kiểm tra xem tên model có thuộc dòng Vision/Multimodal hay không (loại bỏ TTS, Audio, Embeddings)"""
+    """Kiểm tra model hỗ trợ Vision/Multimodal"""
     name_lower = model_name.lower()
-    
-    # Danh sách các từ khóa không hỗ trợ Image modality
     non_vision_keywords = ["tts", "audio", "embed", "text-only", "imagen"]
     for keyword in non_vision_keywords:
         if keyword in name_lower:
             return False
-            
-    # Phải chứa từ khóa gemini và không nằm trong danh sách cấm
     return "gemini" in name_lower
 
 def get_available_models(api_key: str):
@@ -50,23 +100,17 @@ def get_available_models(api_key: str):
     try:
         client = genai.Client(api_key=api_key)
         valid_models = []
-        
         for m in client.models.list():
             name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
-            
-            # Lọc chỉ lấy các model Gemini Multimodal (Vision)
             if is_vision_model(name):
                 valid_models.append(name)
-                
-        # Sắp xếp ưu tiên: đưa các bản flash ổn định lên đầu
         valid_models.sort(key=lambda x: ("lite" in x, "pro" in x, "preview" in x))
-        
         return valid_models if valid_models else ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
     except Exception:
         return ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
 
 def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_model: str, extra_prompt: str) -> str:
-    """Gọi Gemini API xử lý ảnh với cơ chế fallback tự động chọn model Vision khả dụng"""
+    """Xử lý API với fallback tự động"""
     client = genai.Client(api_key=api_key)
     prompt = "Hãy nhận diện và chuyển đổi chính xác toàn bộ biểu thức/nội dung toán học trong ảnh này thành mã LaTeX chuẩn."
     
@@ -74,7 +118,6 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_mod
     if extra_prompt.strip():
         sys_prompt += f"\nYêu cầu bổ sung từ người dùng: {extra_prompt.strip()}"
 
-    # Lấy danh sách model Vision thực tế làm fallback, ưu tiên model được chọn
     available_list = get_available_models(api_key)
     fallback_models = [selected_model] + [m for m in available_list if m != selected_model]
 
@@ -97,16 +140,11 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_mod
         except Exception as e:
             last_exception = e
             err_str = str(e)
-            
-            # Bỏ qua nếu dính lỗi không hỗ trợ Image (400) hoặc không tìm thấy model (404)
             if "400" in err_str or "INVALID_ARGUMENT" in err_str or "404" in err_str or "NOT_FOUND" in err_str:
                 continue
-                
-            # Nếu dính lỗi Rate Limit/Quota (429), chờ 2 giây rồi chuyển sang Vision model tiếp theo
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
                 time.sleep(2)
                 continue
-                
             raise e
 
     raise last_exception
@@ -115,7 +153,9 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_mod
 # Thanh bên (Sidebar)
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    st.title("⚙️ Cấu hình App")
+    st.markdown("## ⚙️ **Cấu hình Hệ thống**")
+    st.markdown("---")
+    
     api_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
     
     available_models = []
@@ -125,62 +165,116 @@ with st.sidebar:
         available_models = ["Vui lòng nhập API Key trước"]
         
     model_choice = st.selectbox(
-        "Mô hình Gemini Vision khả dụng", 
+        "Mô hình Gemini Vision", 
         available_models,
         index=0,
-        help="Danh sách mô hình hỗ trợ đọc ảnh được quét trực tiếp từ API Key của bạn."
+        help="Danh sách mô hình đọc ảnh khả dụng trên tài khoản của bạn."
     )
     
+    st.markdown("---")
     extra_notes = st.text_area(
-        "Ghi chú bổ sung (Tùy chọn)", 
-        placeholder="VD: Nếu là bảng biến thiên hãy dùng gói tkz-tab..."
+        "📝 **Ghi chú/Yêu cầu bổ sung**", 
+        placeholder="VD: Dùng tkz-tab cho BBT, dùng align* cho hệ phương trình...",
+        height=120
     )
+    
+    st.caption("✨ Tự động tối ưu mã cho Overleaf, LaTeX Studio và các trình biên soạn chuyên nghiệp.")
 
 # -----------------------------------------------------------------------------
 # Giao diện chính (Main UI)
 # -----------------------------------------------------------------------------
-st.title("🧮 Math Image to LaTeX Web App")
-st.caption("Ứng dụng nhận diện và chuyển đổi công thức toán học từ ảnh sang mã LaTeX.")
+# Header
+st.markdown("<h1 class='header-title'>🧮 Math OCR Studio Pro</h1>", unsafe_allow_html=True)
+st.markdown("Chuyển đổi hình ảnh bài toán, công thức, đồ thị & bảng biến thiên thành **mã LaTeX chuẩn**.")
+st.write("")
 
-col1, col2 = st.columns([1, 1], gap="large")
+# Chia 2 cột tỷ lệ 5:7 cho bố cục cân đối hơn
+col1, col2 = st.columns([5, 7], gap="large")
 
+# -----------------------------------------------------------------------------
+# CỘT 1: INPUT (Hình ảnh & Điều khiển)
+# -----------------------------------------------------------------------------
 with col1:
-    st.subheader("1. Tải ảnh bài toán / công thức")
-    uploaded = st.file_uploader("Chọn ảnh PNG, JPG, WEBP", type=["png", "jpg", "jpeg", "webp"])
+    st.markdown("### 📸 **1. Tải ảnh đầu vào**")
+    
+    uploaded = st.file_uploader(
+        "Thả ảnh hoặc bấm để chọn (PNG, JPG, WEBP)", 
+        type=["png", "jpg", "jpeg", "webp"],
+        label_visibility="collapsed"
+    )
+    
     if uploaded:
+        # Container xem trước ảnh
         st.image(uploaded, use_container_width=True)
+        
+        # Nút chuyển đổi lớn
+        convert_btn = st.button("🚀 Trích xuất Mã LaTeX", type="primary", use_container_width=True)
+        if convert_btn:
+            if not api_key:
+                st.error("⚠️ Vui lòng nhập API Key ở thanh bên trái!")
+            else:
+                with st.spinner("⚡ Đang phân tích cấu trúc toán học..."):
+                    try:
+                        res = convert_image(uploaded.getvalue(), uploaded.type, api_key, model_choice, extra_notes)
+                        
+                        # Làm sạch mã
+                        clean_res = res.strip()
+                        if clean_res.startswith("```latex"):
+                            clean_res = clean_res[8:]
+                        if clean_res.startswith("```"):
+                            clean_res = clean_res[3:]
+                        if clean_res.endswith("```"):
+                            clean_res = clean_res[:-3]
+                        clean_res = clean_res.strip()
+                        
+                        st.session_state["result"] = clean_res
+                        st.session_state["has_run"] = True
+                        st.toast("Chuyển đổi thành công!", icon="✅")
+                    except Exception as e:
+                        st.error(f"❌ Lỗi: {e}")
+    else:
+        # Placeholder gợi ý khi chưa chọn ảnh
+        st.info("👆 Hãy tải lên một bức ảnh chứa công thức toán hoặc đề bài để bắt đầu.")
 
+# -----------------------------------------------------------------------------
+# CỘT 2: OUTPUT (Kết quả Mã LaTeX Pure)
+# -----------------------------------------------------------------------------
 with col2:
-    st.subheader("2. Mã LaTeX & Xem trước")
-    if uploaded and st.button("🚀 Chuyển đổi ngay", type="primary", use_container_width=True):
-        if not api_key:
-            st.error("Vui lòng nhập Gemini API Key ở thanh bên trái!")
-        else:
-            with st.spinner("Đang nhận diện..."):
-                try:
-                    res = convert_image(uploaded.getvalue(), uploaded.type, api_key, model_choice, extra_notes)
-                    
-                    # Làm sạch mã LaTeX trả về
-                    clean_res = res.strip()
-                    if clean_res.startswith("```latex"):
-                        clean_res = clean_res[8:]
-                    if clean_res.startswith("```"):
-                        clean_res = clean_res[3:]
-                    if clean_res.endswith("```"):
-                        clean_res = clean_res[:-3]
-                    clean_res = clean_res.strip()
-                    
-                    st.session_state["result"] = clean_res
-                    st.success("Thành công!")
-                except Exception as e:
-                    st.error(f"Lỗi: {e}")
-
+    st.markdown("### 📄 **2. Kết quả Mã LaTeX**")
+    
     if "result" in st.session_state and st.session_state["result"]:
-        latex = st.session_state["result"]
-        tab1, tab2 = st.tabs(["👁️ Xem trước (Render)", "💻 Mã LaTeX"])
-        with tab1:
-            if "\\begin{tkz" in latex or "\\begin{tikzpicture}" in latex:
-                st.info("📌 Đoạn mã chứa môi trường TikZ/tkz-tab. Bạn hãy copy mã bên tab 'Mã LaTeX' để dán vào Overleaf/LaTeX Editor.")
-            st.markdown(f"$${latex}$$")
-        with tab2:
-            st.code(latex, language="latex")
+        latex_code = st.session_state["result"]
+        
+        # Nhãn thông báo loại mã
+        if "\\begin{tkz" in latex_code or "\\begin{tikzpicture}" in latex_code:
+            st.warning("⚡ **Phát hiện mã đồ thị / Bảng biến thiên (TikZ/tkz-tab)**")
+        
+        # Khung chứa code với nút Copy tích hợp sẵn của Streamlit
+        st.code(latex_code, language="latex")
+        
+        # Ô Text area nhanh nếu người dùng muốn chỉnh sửa trực tiếp tại chỗ
+        st.markdown("**Chỉnh sửa nhanh mã:**")
+        edited_code = st.text_area(
+            "Chỉnh sửa mã", 
+            value=latex_code, 
+            height=280, 
+            label_visibility="collapsed"
+        )
+        
+    else:
+        # Giao diện chờ đẹp mắt
+        st.markdown(
+            """
+            <div style="
+                border: 2px dashed rgba(128, 128, 128, 0.3); 
+                border-radius: 12px; 
+                padding: 60px 20px; 
+                text-align: center;
+                color: #888888;
+                margin-top: 10px;">
+                <p style="font-size: 40px; margin-bottom: 10px;">💻</p>
+                <p style="font-weight: 500;">Mã LaTeX sẽ xuất hiện ở đây sau khi bạn bấm "Trích xuất Mã LaTeX".</p>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
