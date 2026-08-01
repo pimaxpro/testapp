@@ -1,8 +1,9 @@
 # app.py
 import io
+import base64
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image
-from streamlit_paste_button import paste_png
 from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
@@ -15,19 +16,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Giao diện phẳng
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
-        # 1. Khởi tạo State lưu danh sách ảnh
+        # 1. Khởi tạo Session State
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
         if "uploader_key" not in st.session_state:
             st.session_state["uploader_key"] = 0
-        if "paste_counter" not in st.session_state:
-            st.session_state["paste_counter"] = 0
+        if "last_paste_id" not in st.session_state:
+            st.session_state["last_paste_id"] = ""
 
         UIComponent.render_header()
         
@@ -46,45 +48,119 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Dữ liệu đầu vào & Yêu cầu")
 
-            # --- NÚT DÁN CLIPBOARD NATIVE (CÓ HIỂN THỊ PREVIEW) ---
-            st.caption("📋 **Dán ảnh từ Clipboard:** Nhấn nút màu tím bên dưới để dán ảnh vừa copy vào danh sách:")
+            # --- KHU VỰC DÁN CLIPBOARD NATIVE (DÙNG STREAMLIT SDK CHUẨN) ---
+            st.caption("📋 **Dán ảnh từ Clipboard:** Nhấp vào khung bên dưới rồi bấm `Ctrl + V`:")
             
-            pasted = paste_png(
-                label="📋 Click để dán ảnh từ Clipboard",
-                text_color="#ffffff",
-                background_color="#4F46E5",
-                hover_background_color="#4338CA",
-                key="clipboard_paster_btn"
+            pasted_data = components.html(
+                """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.4.0/dist/streamlit-component-lib.js"></script>
+                    <style>
+                        body { margin: 0; padding: 0; font-family: sans-serif; }
+                        #paste-zone {
+                            border: 2px dashed #6366F1;
+                            border-radius: 8px;
+                            background-color: #EEF2FF;
+                            color: #4338CA;
+                            padding: 14px;
+                            text-align: center;
+                            font-weight: 600;
+                            font-size: 14px;
+                            cursor: pointer;
+                            outline: none;
+                            user-select: none;
+                        }
+                        #paste-zone:focus {
+                            border-color: #4338CA;
+                            background-color: #E0E7FF;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div id="paste-zone" tabindex="0">
+                        📋 BẤM VÀO ĐÂY RỒI NHẤN CTRL + V ĐỂ DÁN ẢNH
+                    </div>
+
+                    <script>
+                        const zone = document.getElementById('paste-zone');
+                        
+                        // Tự động focus khi load
+                        window.addEventListener('load', () => {
+                            zone.focus();
+                            Streamlit.setFrameHeight(60);
+                        });
+
+                        zone.addEventListener('paste', (e) => {
+                            e.preventDefault();
+                            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                            for (let item of items) {
+                                if (item.type.indexOf('image') !== -1) {
+                                    const file = item.getAsFile();
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => {
+                                        const b64 = evt.target.result;
+                                        // Gửi dữ liệu về Python qua Streamlit SDK chuẩn
+                                        const payload = JSON.stringify({
+                                            id: Date.now(),
+                                            data: b64
+                                        });
+                                        Streamlit.setComponentValue(payload);
+                                    };
+                                    reader.readAsDataURL(file);
+                                    
+                                    zone.style.backgroundColor = '#D1FAE5';
+                                    zone.style.borderColor = '#10B981';
+                                    zone.style.color = '#065F46';
+                                    zone.innerText = '✅ Đã nhận ảnh! Thầy có thể Ctrl + V tiếp...';
+                                    setTimeout(() => {
+                                        zone.style.backgroundColor = '#EEF2FF';
+                                        zone.style.borderColor = '#6366F1';
+                                        zone.style.color = '#4338CA';
+                                        zone.innerText = '📋 BẤM VÀO ĐÂY RỒI NHẤN CTRL + V ĐỂ DÁN ẢNH';
+                                    }, 1000);
+                                    break;
+                                }
+                            }
+                        });
+                    </script>
+                </body>
+                </html>
+                """,
+                height=65
             )
 
-            # Xử lý khi có ảnh vừa dán
-            if pasted.image_data is not None:
-                img_pil = pasted.image_data
-                buf = io.BytesIO()
-                img_pil.save(buf, format="PNG")
-                file_bytes = buf.getvalue()
+            # Xử lý khi nhận dữ liệu dán từ Javascript
+            if pasted_data:
+                try:
+                    import json
+                    parsed = json.loads(pasted_data)
+                    paste_id = str(parsed.get("id"))
+                    b64_str = parsed.get("data", "")
 
-                # Kiểm tra tránh trùng lặp khi rerun
-                if not any(f.get("bytes") == file_bytes for f in st.session_state["input_images"]):
-                    st.session_state["paste_counter"] += 1
-                    img_name = f"clipboard_{st.session_state['paste_counter']}.png"
-                    
-                    st.session_state["input_images"].append({
-                        "name": img_name,
-                        "bytes": file_bytes,
-                        "mime": "image/png",
-                        "preview": img_pil
-                    })
-                    st.toast(f"Đã dán thành công {img_name}!", icon="✅")
-                    st.rerun()
+                    if paste_id != st.session_state["last_paste_id"] and b64_str.startswith("data:image"):
+                        st.session_state["last_paste_id"] = paste_id
+                        header, encoded = b64_str.split(",", 1)
+                        file_bytes = base64.b64decode(encoded)
+                        preview_img = Image.open(io.BytesIO(file_bytes))
+                        
+                        img_num = len(st.session_state["input_images"]) + 1
+                        st.session_state["input_images"].append({
+                            "name": f"Clipboard_{img_num}.png",
+                            "bytes": file_bytes,
+                            "mime": "image/png",
+                            "preview": preview_img
+                        })
+                        st.rerun()
+                except Exception as e:
+                    pass
 
-            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
 
-            # --- KHU VỰC HIỂN THỊ PREVIEW DANH SÁCH ẢNH ĐÃ DÁN / UPLOAD ---
+            # --- PREVIEW DANH SÁCH ẢNH ĐÃ DÁN / UPLOAD ---
             if st.session_state["input_images"]:
-                st.markdown(f"🖼️ **Danh sách ảnh chuẩn bị chuyển đổi ({len(st.session_state['input_images'])} ảnh):**")
-                
-                # Tạo lưới 3 cột có hình thu nhỏ + nút xóa riêng
+                st.markdown(f"🖼️ **Ảnh chờ xử lý ({len(st.session_state['input_images'])}):**")
                 grid = st.columns(3)
                 for idx, item in enumerate(list(st.session_state["input_images"])):
                     with grid[idx % 3]:
@@ -98,7 +174,7 @@ class MathOCRApp:
                                 st.session_state["input_images"].pop(idx)
                                 st.rerun()
             else:
-                st.info("Chưa có ảnh nào. Thầy hãy copy ảnh rồi bấm nút màu tím ở trên để dán nhé.", icon="ℹ️")
+                st.info("Chưa có ảnh nào. Thầy click vào ô xanh nhạt ở trên rồi bấm **Ctrl + V** nhé.", icon="ℹ️")
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
@@ -110,19 +186,19 @@ class MathOCRApp:
                 "Yêu cầu bổ sung cho AI",
                 value=st.session_state["extra_notes_val"],
                 height=90,
-                placeholder="Nhập yêu cầu bổ sung cho AI...",
+                placeholder="Nhập yêu cầu bổ sung...",
                 label_visibility="collapsed"
             )
             st.session_state["extra_notes_val"] = extra_prompt
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # --- HÀNG NÚT THAO TÁC UPLOAD & CONVERT ---
+            # --- HÀNG NÚT THAO TÁC ---
             act_col1, act_col2, act_col3 = st.columns([5, 3.5, 3.5])
             
             with act_col1:
                 uploaded_files = st.file_uploader(
-                    "Hoặc tải file từ máy", 
+                    "Hoặc chọn file từ máy", 
                     type=["png", "jpg", "jpeg", "webp", "pdf"],
                     accept_multiple_files=True,
                     label_visibility="collapsed",
@@ -135,7 +211,7 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # Xử lý Upload file từ máy
+            # Tải file từ máy
             if uploaded_files:
                 has_new = False
                 for file in uploaded_files:
@@ -154,12 +230,13 @@ class MathOCRApp:
                     st.session_state["uploader_key"] += 1
                     st.rerun()
 
-            # Nút Xóa tất cả
+            # Xóa sạch danh sách
             if btn_clear_all:
                 st.session_state["input_images"] = []
+                st.session_state["last_paste_id"] = ""
                 st.rerun()
 
-            # Nút Convert
+            # Chạy Convert
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
