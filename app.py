@@ -1,7 +1,7 @@
 # app.py
 import io
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageGrab
 from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
@@ -42,19 +42,11 @@ class MathOCRApp:
 
         # ==================== CỘT 1: INPUT & CONTROLS ====================
         with col1:
-            st.markdown("### 📥 Nội dung & Yêu cầu")
+            st.markdown("### 📥 Dữ liệu đầu vào & Yêu cầu")
             
-            # Editor chính
-            main_text = st.text_area(
-                "Nội dung bài toán",
-                height=180,
-                placeholder="Nhập hoặc dán nội dung bài toán vào đây...",
-                label_visibility="collapsed"
-            )
-
-            # Danh sách ảnh/file đính kèm
+            # Danh sách ảnh/file đính kèm hiện tại
             if st.session_state.get("input_images"):
-                st.caption("📷 Danh sách file/ảnh đã đính kèm:")
+                st.caption(f"📷 Đã nhận **{len(st.session_state['input_images'])}** file/ảnh đầu vào:")
                 num_files = len(st.session_state["input_images"])
                 cols = st.columns(min(num_files, 4))
                 
@@ -79,7 +71,7 @@ class MathOCRApp:
             extra_prompt = st.text_area(
                 "Yêu cầu bổ sung cho AI",
                 value=st.session_state["extra_notes_val"],
-                height=90,
+                height=110,
                 placeholder="Nhập yêu cầu bổ sung cho AI...",
                 label_visibility="collapsed"
             )
@@ -87,8 +79,8 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-            # Hàng nút thao tác
-            act_col1, act_col2, act_col3 = st.columns([4, 3, 3])
+            # Hàng nút thao tác: Upload File, Dán Clipboard, Xóa tất cả, Convert
+            act_col1, act_col2, act_col3, act_col4 = st.columns([4, 3, 3, 3])
             
             with act_col1:
                 uploaded_files = st.file_uploader(
@@ -98,11 +90,14 @@ class MathOCRApp:
                     label_visibility="collapsed",
                     key=f"file_uploader_{st.session_state['uploader_key']}"
                 )
-            
+
             with act_col2:
+                btn_paste = st.button("📋 Dán Clipboard", type="secondary", use_container_width=True)
+            
+            with act_col3:
                 btn_clear_all = st.button("🗑️ Xóa tất cả", type="secondary", use_container_width=True)
                 
-            with act_col3:
+            with act_col4:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
             # Xử lý file upload
@@ -125,32 +120,50 @@ class MathOCRApp:
                     st.session_state["uploader_key"] += 1
                     st.rerun()
 
-            # Sự kiện nút
+            # Xử lý dán Clipboard
+            if btn_paste:
+                try:
+                    pasted_image = ImageGrab.grabclipboard()
+                    if isinstance(pasted_image, Image.Image):
+                        img_byte_arr = io.BytesIO()
+                        pasted_image.save(img_byte_arr, format='PNG')
+                        file_bytes = img_byte_arr.getvalue()
+                        img_name = f"clipboard_{len(st.session_state['input_images']) + 1}.png"
+                        
+                        st.session_state["input_images"].append({
+                            "name": img_name,
+                            "bytes": file_bytes,
+                            "mime": "image/png",
+                            "preview": pasted_image
+                        })
+                        st.toast("Đã dán ảnh từ Clipboard thành công!", icon="📋")
+                        st.rerun()
+                    else:
+                        st.warning("Không tìm thấy dữ liệu hình ảnh trong Clipboard!", icon="⚠️")
+                except Exception as e:
+                    st.error(f"Lỗi khi đọc Clipboard: {e}", icon="❌")
+
+            # Sự kiện nút Xóa tất cả
             if btn_clear_all:
                 st.session_state["input_images"] = []
                 st.rerun()
 
+            # Sự kiện nút Convert
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
-                elif not st.session_state.get("input_images") and not main_text.strip():
-                    st.error("Vui lòng nhập văn bản hoặc tải file lên!", icon="⚠️")
+                elif not st.session_state.get("input_images"):
+                    st.error("Vui lòng tải file hoặc dán ảnh từ Clipboard!", icon="⚠️")
                 else:
                     with st.spinner("Đang xử lý cấu trúc toán học..."):
                         try:
-                            combined_prompt = ""
-                            if main_text.strip():
-                                combined_prompt += f"Văn bản đầu vào:\n{main_text}\n\n"
-                            if extra_prompt.strip():
-                                combined_prompt += f"Ghi chú bổ sung:\n{extra_prompt}"
-
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             input_list = st.session_state.get("input_images", [])
                             
                             result_code = processor.process(
                                 input_data=input_list,
                                 model=selected_model,
-                                extra_prompt=combined_prompt,
+                                extra_prompt=extra_prompt,
                                 add_solution=add_solution
                             )
 
