@@ -40,7 +40,7 @@ class UIComponent:
 
             st.markdown("---")
 
-            # Danh sách đúng 3 chức năng thầy yêu cầu
+            # Danh sách 3 chức năng chính
             mode = st.selectbox(
                 "Chọn Chức năng Processing",
                 options=["latex", "ex_test", "tikz"],
@@ -51,7 +51,7 @@ class UIComponent:
                 }[x]
             )
 
-            # 2 tùy chọn riêng cho ex_test ngay bên dưới selectbox ở sidebar
+            # Tùy chọn lời giải cho ex_test
             add_solution = False
             if mode == "ex_test":
                 solution_option = st.radio(
@@ -71,23 +71,24 @@ class UIComponent:
 
     @staticmethod
     def render_input_section():
-        """Khu vực Upload, Preview nhiều ảnh và Yêu cầu bổ sung"""
+        """Khu vực Upload, Paste Clipboard, Preview và Yêu cầu bổ sung"""
         st.markdown("### 1. Dữ liệu đầu vào")
 
-        # Box tải lên nhiều file (Ảnh / PDF)
-        uploaded_files = st.file_uploader(
-            "Tải lên hoặc Kéo thả nhiều Ảnh / PDF", 
-            type=["png", "jpg", "jpeg", "webp", "pdf"],
-            accept_multiple_files=True
-        )
-
-        # Cấu trúc lưu trữ danh sách ảnh trong Session State
+        # Cấu trúc lưu trữ danh sách tệp trong Session State
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
 
-        # Cập nhật danh sách từ uploader
-        if uploaded_files:
-            st.session_state["input_images"] = uploaded_files
+        # Hàng nút upload và dán clipboard
+        col_up, col_paste = st.columns([7, 3])
+        with col_up:
+            uploaded_files = st.file_uploader(
+                "Tải lên hoặc Kéo thả Ảnh / PDF", 
+                type=["png", "jpg", "jpeg", "webp", "pdf"],
+                accept_multiple_files=True,
+                label_visibility="collapsed"
+            )
+        with col_paste:
+            btn_paste = st.button("📋 Dán từ Clipboard", use_container_width=True)
 
         # Hiển thị danh sách / Preview các ảnh đã upload/dán
         if st.session_state["input_images"]:
@@ -99,7 +100,7 @@ class UIComponent:
 
         st.markdown("---")
 
-        # Box Yêu cầu bổ sung cho AI (đã chuyển từ Sidebar sang)
+        # Box Yêu cầu bổ sung cho AI
         if "extra_notes_val" not in st.session_state:
             st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -113,7 +114,7 @@ class UIComponent:
 
         st.markdown("---")
 
-        # 2 nút bấm đặt cùng hàng, kích thước bằng nhau
+        # 2 nút bấm thao tác chính
         col1, col2 = st.columns(2)
         with col1:
             btn_process = st.button(
@@ -132,7 +133,7 @@ class UIComponent:
             st.session_state["input_images"] = []
             st.rerun()
 
-        return btn_process, extra_notes
+        return btn_process, extra_notes, uploaded_files, btn_paste
 
     @staticmethod
     def render_output_section():
