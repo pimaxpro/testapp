@@ -2,11 +2,14 @@ import streamlit as st
 
 CUSTOM_CSS = """
     <style>
+    /* Chỉnh tổng thể trang */
     .main .block-container { 
         padding-top: 1.5rem; 
         padding-bottom: 2rem;
         max-width: 95%;
     }
+    
+    /* Header title */
     .header-title {
         font-family: 'Inter', sans-serif;
         font-weight: 700;
@@ -15,13 +18,29 @@ CUSTOM_CSS = """
         -webkit-text-fill-color: transparent;
     }
     
-    /* Ép font Consolas/Monospace trực tiếp vào ô Code duy nhất */
-    div[data-baseweb="textarea"] textarea {
-        font-family: 'Consolas', 'Courier New', monospace !important;
-        font-size: 14px !important;
-        line-height: 1.5 !important;
+    /* BIẾN TEXTAREA THÀNH CODE BOX CHUẨN OVERLEAF / VS CODE */
+    div[data-baseweb="textarea"] {
+        background-color: #1e1e1e !important;
+        border: 1px solid #333333 !important;
+        border-radius: 6px !important;
     }
-    
+
+    div[data-baseweb="textarea"] textarea {
+        font-family: 'Consolas', 'Fira Code', 'Courier New', monospace !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        color: #d4d4d4 !important;
+        background-color: #1e1e1e !important;
+        padding: 12px 15px !important;
+        caret-color: #569cd6 !important; /* Con trỏ gõ văn bản màu xanh chuẩn VS Code */
+    }
+
+    /* Viền khi click vào sửa */
+    div[data-baseweb="textarea"] textarea:focus {
+        border-color: #007acc !important;
+        box-shadow: 0 0 0 1px #007acc !important;
+    }
+
     footer {visibility: hidden;}
     </style>
 """
