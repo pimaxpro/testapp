@@ -13,15 +13,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== STYLING GIAO DIỆN STUDIO MONOCHROME ====================
+# ==================== STYLING GIAO DIỆN STUDIO (LIGHT EDIT BOXES) ====================
 STUDIO_DESIGN_CSS = CUSTOM_CSS + """
 <style>
     :root {
         --primary-color: #4F46E5 !important;
         --primary-hover: #4338CA !important;
-        --bg-card: #181825 !important;
-        --border-color: #313244 !important;
-        --text-muted: #A6ADC8 !important;
+        --bg-edit-box: #FFFFFF !important;
+        --border-color: #CBD5E1 !important;
+        --text-color: #0F172A !important;
     }
 
     /* Triệt tiêu viền đỏ mặc định của Streamlit khi focus */
@@ -31,18 +31,24 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         box-shadow: 0 0 0 1px var(--primary-color) !important;
     }
 
-    /* Cấu hình các khung Box Editor */
+    /* Cấu hình các khung Box Editor NỀN SÁNG */
     .stTextArea textarea {
-        background-color: var(--bg-card) !important;
+        background-color: var(--bg-edit-box) !important;
         border: 1.5px solid var(--border-color) !important;
         border-radius: 10px !important;
-        color: #CDD6F4 !important;
+        color: var(--text-color) !important;
         font-size: 14px !important;
-        transition: border-color 0.2s ease;
+        font-weight: 450 !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .stTextArea textarea:focus {
         border-color: var(--primary-color) !important;
-        box-shadow: 0 0 0 1px var(--primary-color) !important;
+        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
+    }
+
+    /* Đổi màu chữ gợi ý (placeholder) cho dễ đọc trên nền sáng */
+    .stTextArea textarea::placeholder {
+        color: #64748B !important;
     }
 
     /* Đồng bộ kiểu dáng nút bấm chân trang */
@@ -54,6 +60,7 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
     .stButton button[kind="primary"] {
         background-color: var(--primary-color) !important;
         border: none !important;
+        color: #FFFFFF !important;
         box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
     }
     .stButton button[kind="primary"]:hover {
@@ -62,7 +69,7 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
     .stButton button[kind="secondary"] {
         background-color: transparent !important;
         border: 1px solid var(--border-color) !important;
-        color: var(--text-muted) !important;
+        color: #64748B !important;
     }
     .stButton button[kind="secondary"]:hover {
         border-color: #EF4444 !important;
@@ -103,7 +110,7 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Nội dung & Yêu cầu")
             
-            # --- BOX 1: EDITOR NHẬP VĂN BẢN/BÀI TOÁN CHÍNH ---
+            # --- BOX 1: EDITOR NHẬP VĂN BẢN/BÀI TOÁN CHÍNH (NỀN SÁNG) ---
             main_text = st.text_area(
                 "Nội dung bài toán",
                 height=180,
@@ -133,7 +140,7 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # --- BOX 2: GHI CHÚ BỔ SUNG CHO AI ---
+            # --- BOX 2: GHI CHÚ BỔ SUNG CHO AI (NỀN SÁNG) ---
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -166,7 +173,7 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # --- XỬ LÝ TẢI FILE NÂNG CAO (CHỐNG NHÁY/LẶP VO HẠN) ---
+            # --- XỬ LÝ TẢI FILE NÂNG CAO (CHỐNG NHÁY/LẶP VÔ HẠN) ---
             if uploaded_files:
                 has_new_file = False
                 for file in uploaded_files:
