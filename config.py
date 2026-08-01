@@ -37,6 +37,16 @@ Quy tắc:
 1. Sử dụng môi trường \\begin{ex} ... \\end{ex} cho từng câu hỏi.
 2. Nếu là câu trắc nghiệm, bắt buộc dùng môi trường \\choice{A}{B}{C}{D} hoặc \\choiceTF cho câu đúng/sai.
 3. Chỉ trả về mã LaTeX thuần túy, không chứa lời dẫn.
+4. Hình vẽ tuân thủ một vài yêu cầu sau
+- Bán kính đường tròn hay các yếu tố về độ dài thì phải sử dụng \pgfmathsetmacro
+- Định nghĩa điểm bằng tọa độ cực, còn nếu có yếu tố tịnh tiến hoặc vị tự hoặc quay hoặc hình chiếu thì cũng phải định nghĩa theo các phép đó. Sử dụng vòng lặp để định nghĩa.
+- Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
+- vòng lặp để tô màu và gán nhãn theo cấu trúc:
+\foreach \t/\g in {tendiem/gochienthi}{
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\g:9 pt)},font=\scriptsize]{$\t$};
+	}
+- pic để đánh dấu góc bằng nhau (nếu có)
+- Đằng sau môi trường \begin{tikzpicture} luôn là \begin{tikzpicture}[line cap=round,line join=round,font=\scriptsize,>=stealth']
 """,
 
     "TIKZ_ONLY": """
@@ -46,6 +56,16 @@ Quy tắc:
 1. Đặt toàn bộ mã trong môi trường \\begin{tikzpicture} ... \\end{tikzpicture} hoặc \\begin{tikzpicture} với tkz-tab.
 2. Tối ưu hóa tọa độ, tính thẩm mỹ, mượt mà của đường cong và nhãn (labels).
 3. Chỉ trả về mã LaTeX thuần túy.
+4. Hình vẽ tuân thủ một vài yêu cầu sau
+- Bán kính đường tròn hay các yếu tố về độ dài thì phải sử dụng \pgfmathsetmacro
+- Định nghĩa điểm bằng tọa độ cực, còn nếu có yếu tố tịnh tiến hoặc vị tự hoặc quay hoặc hình chiếu thì cũng phải định nghĩa theo các phép đó. Sử dụng vòng lặp để định nghĩa.
+- Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
+- vòng lặp để tô màu và gán nhãn theo cấu trúc:
+\foreach \t/\g in {tendiem/gochienthi}{
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\g:9 pt)},font=\scriptsize]{$\t$};
+	}
+- pic để đánh dấu góc bằng nhau (nếu có)
+- Đằng sau môi trường \begin{tikzpicture} luôn là \begin{tikzpicture}[line cap=round,line join=round,font=\scriptsize,>=stealth']
 """,
 
     "EX_TEST_SOLVE": """
@@ -56,5 +76,15 @@ Quy tắc:
 1. Cấu trúc đầy đủ: \\begin{ex} [Nội dung đề] \\choice{A}{B}{C}{D} \\loigiai{[Lời giải chi tiết do bạn giải]} \\end{ex}.
 2. Lời giải phải chính xác, ngắn gọn, sư phạm.
 3. Chỉ trả về mã LaTeX thuần túy.
+4. Hình vẽ tuân thủ một vài yêu cầu sau
+- Bán kính đường tròn hay các yếu tố về độ dài thì phải sử dụng \pgfmathsetmacro
+- Định nghĩa điểm bằng tọa độ cực, còn nếu có yếu tố tịnh tiến hoặc vị tự hoặc quay hoặc hình chiếu thì cũng phải định nghĩa theo các phép đó. Sử dụng vòng lặp để định nghĩa.
+- Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
+- vòng lặp để tô màu và gán nhãn theo cấu trúc:
+\foreach \t/\g in {tendiem/gochienthi}{
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\g:9 pt)},font=\scriptsize]{$\t$};
+	}
+- pic để đánh dấu góc bằng nhau (nếu có)
+- Đằng sau môi trường \begin{tikzpicture} luôn là \begin{tikzpicture}[line cap=round,line join=round,font=\scriptsize,>=stealth']
 """
 }
