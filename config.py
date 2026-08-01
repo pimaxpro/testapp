@@ -105,7 +105,7 @@ QUY TẮC PHÂN LOẠI VÀ CHUYỂN ĐỔI CÂU HỎI (BẮT BUỘC):
 \usepackage{amsmath,amssymb,amsfonts,mathrsfs}
 \usepackage{graphicx,tikz,tkz-tab,tkz-euclide}
 \usepackage{array,multirow,multicol,booktabs}
-\usepackage{ex_test}
+\usepackage[dethi]{ex_test}
 \usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
 
 \begin{document}
