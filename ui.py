@@ -45,8 +45,8 @@ class UIComponent:
     # --- KHU VỰC LƯU TRỮ API KEY DÙNG CHUNG ---
     SYSTEM_API_KEYS = {
         "Key Hệ Thống 1 (Chính)": "AQ.Ab8RN6I1-6Wu4zEw7lqCbNeAvDfR0xJYxzDfPM4WxejgQiTUkw",
-        "Key Hệ Thống 2 (Dự phòng 1)": "AQ.Ab8RN6L3v5pf216_mHlBksO3Py44wnlxmicDCzTS99Th-pao1w",
-        "Key Hệ Thống 3 (Dự phòng 2)": "AQ.Ab8RN6LCTf6mo4nUUrCqAqlDYI8B6oFAGQGu7YzIjGcDiRBKeA"
+        "Key Hệ Thống 2 (Dự phòng 1)": "AQ.Ab8RN6JuaWIrWLS3nCIm6harDOqNgtTjI-a_lgWQqm6olzdM3Q",
+        "Key Hệ Thống 3 (Dự phòng 2)": "AQ.Ab8RN6KJZZu8s8BN2G2sUmEnWNtFjeoT4frqvEKcPUcQgNU5OQ"
     }
 
     @staticmethod
