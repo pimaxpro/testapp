@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== STYLING GIAO DIỆN PHẲNG (TỐI GIẢN - KHÔNG VIỀN SÁNG) ====================
+# ==================== STYLING GIAO DIỆN TĨNH HOÀN TOÀN (ZERO FOCUS EFFECT) ====================
 STUDIO_DESIGN_CSS = CUSTOM_CSS + """
 <style>
     :root {
@@ -21,36 +21,52 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         --primary-hover: #4338CA !important;
         --bg-edit-box: #FFFFFF !important;
         --border-color: #CBD5E1 !important;
-        --border-focus: #94A3B8 !important;
         --text-color: #0F172A !important;
     }
 
-    /* TRIỆT TIÊU TOÀN BỘ HIỆU ỨNG VIỀN SÁNG / GLOW / OUTLINE MẶC ĐỊNH */
-    *, *:focus, *:focus-within, *:active {
+    /* 1. TRIỆT TIÊU TOÀN BỘ HIỆU ỨNG FOCUS/ACTIVE TRÊN TOÀN BỘ WEB */
+    *, *:focus, *:focus-within, *:active, *:hover {
         outline: none !important;
         box-shadow: none !important;
     }
 
-    div[data-baseweb="textarea"]:focus-within,
-    div[data-baseweb="input"]:focus-within {
-        border-color: var(--border-focus) !important;
-        box-shadow: none !important;
-    }
-
-    /* KHUNG BOX EDITOR NỀN SÁNG - TĨNH 100% */
-    .stTextArea textarea {
+    /* 2. ÉP THẺ BỌC NGOÀI CỦA BASEWEB TĨNH HOÀN TOÀN */
+    div[data-baseweb="textarea"],
+    div[data-baseweb="base-input"],
+    div[data-baseweb="input"] {
         background-color: var(--bg-edit-box) !important;
         border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    /* Giữ nguyên trạng thái khi click vào (không đổi màu, không đổi viền) */
+    div[data-baseweb="textarea"]:focus-within,
+    div[data-baseweb="base-input"]:focus-within,
+    div[data-baseweb="input"]:focus-within,
+    div[data-baseweb="textarea"]:hover,
+    div[data-baseweb="base-input"]:hover {
+        border-color: var(--border-color) !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+
+    /* 3. THẺ TEXTAREA BÊN TRONG CŨNG TĨNH HOÀN TOÀN */
+    .stTextArea textarea {
+        background-color: transparent !important;
+        border: none !important;
         border-radius: 8px !important;
         color: var(--text-color) !important;
         font-size: 14px !important;
         font-weight: 450 !important;
         box-shadow: none !important;
         outline: none !important;
-        transition: border-color 0.15s ease !important;
     }
-    .stTextArea textarea:focus {
-        border-color: var(--border-focus) !important;
+
+    .stTextArea textarea:focus, 
+    .stTextArea textarea:active {
+        border: none !important;
         box-shadow: none !important;
         outline: none !important;
     }
@@ -60,7 +76,7 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         color: #94A3B8 !important;
     }
 
-    /* ĐỒNG BỘ KIỂU DÁNG NÚT BẤM CHÂN TRANG PHẲNG */
+    /* 4. NÚT BẤM PHẲNG TĨNH */
     .stButton button {
         height: 42px !important;
         border-radius: 8px !important;
