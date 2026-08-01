@@ -32,30 +32,41 @@ Quy tắc bắt buộc:
 5. Giữ nguyên cấu trúc logic của bài toán.
 """
 
+def is_vision_model(model_name: str) -> bool:
+    """Kiểm tra xem tên model có thuộc dòng Vision/Multimodal hay không (loại bỏ TTS, Audio, Embeddings)"""
+    name_lower = model_name.lower()
+    
+    # Danh sách các từ khóa không hỗ trợ Image modality
+    non_vision_keywords = ["tts", "audio", "embed", "text-only", "imagen"]
+    for keyword in non_vision_keywords:
+        if keyword in name_lower:
+            return False
+            
+    # Phải chứa từ khóa gemini và không nằm trong danh sách cấm
+    return "gemini" in name_lower
+
 def get_available_models(api_key: str):
-    """Lấy danh sách các model khả dụng và thực sự hỗ trợ generateContent từ API Key"""
+    """Lấy danh sách các Vision models thực sự hỗ trợ xử lý ảnh từ API Key"""
     try:
         client = genai.Client(api_key=api_key)
         valid_models = []
         
         for m in client.models.list():
             name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
-            # Kiểm tra nếu model hỗ trợ generateContent
-            methods = getattr(m, 'supported_generation_methods', [])
-            if "generateContent" in methods or not methods:
-                if "gemini" in name.lower() and "embed" not in name.lower():
-                    valid_models.append(name)
-                    
-        # Loại bỏ bản lite nếu có để ưu tiên bản chính ổn định hơn
-        valid_models.sort(key=lambda x: ("lite" in x, "flash" not in x))
+            
+            # Lọc chỉ lấy các model Gemini Multimodal (Vision)
+            if is_vision_model(name):
+                valid_models.append(name)
+                
+        # Sắp xếp ưu tiên: đưa các bản flash ổn định lên đầu
+        valid_models.sort(key=lambda x: ("lite" in x, "pro" in x, "preview" in x))
         
-        return valid_models if valid_models else ["gemini-2.0-flash", "gemini-2.5-flash"]
-    except Exception as e:
-        # Danh sách dự phòng các tên mô hình chuẩn của SDK mới nhất
-        return ["gemini-2.0-flash", "gemini-2.5-flash"]
+        return valid_models if valid_models else ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+    except Exception:
+        return ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
 
 def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_model: str, extra_prompt: str) -> str:
-    """Gọi Gemini API xử lý ảnh với cơ chế fallback linh hoạt và retry khi dính 429"""
+    """Gọi Gemini API xử lý ảnh với cơ chế fallback tự động chọn model Vision khả dụng"""
     client = genai.Client(api_key=api_key)
     prompt = "Hãy nhận diện và chuyển đổi chính xác toàn bộ biểu thức/nội dung toán học trong ảnh này thành mã LaTeX chuẩn."
     
@@ -63,7 +74,7 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_mod
     if extra_prompt.strip():
         sys_prompt += f"\nYêu cầu bổ sung từ người dùng: {extra_prompt.strip()}"
 
-    # Lấy danh sách các model thực tế từ API để làm fallback, đưa selected_model lên đầu
+    # Lấy danh sách model Vision thực tế làm fallback, ưu tiên model được chọn
     available_list = get_available_models(api_key)
     fallback_models = [selected_model] + [m for m in available_list if m != selected_model]
 
@@ -87,13 +98,13 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_mod
             last_exception = e
             err_str = str(e)
             
-            # Bỏ qua model 404 không tồn tại để thử model tiếp theo trong danh sách
-            if "404" in err_str or "NOT_FOUND" in err_str:
+            # Bỏ qua nếu dính lỗi không hỗ trợ Image (400) hoặc không tìm thấy model (404)
+            if "400" in err_str or "INVALID_ARGUMENT" in err_str or "404" in err_str or "NOT_FOUND" in err_str:
                 continue
                 
-            # Nếu dính 429 Quota/Rate limit, chờ 3 giây rồi thử model kế tiếp
+            # Nếu dính lỗi Rate Limit/Quota (429), chờ 2 giây rồi chuyển sang Vision model tiếp theo
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                time.sleep(3)
+                time.sleep(2)
                 continue
                 
             raise e
@@ -114,10 +125,10 @@ with st.sidebar:
         available_models = ["Vui lòng nhập API Key trước"]
         
     model_choice = st.selectbox(
-        "Mô hình Gemini khả dụng", 
+        "Mô hình Gemini Vision khả dụng", 
         available_models,
         index=0,
-        help="Danh sách mô hình được quét trực tiếp từ API Key của bạn."
+        help="Danh sách mô hình hỗ trợ đọc ảnh được quét trực tiếp từ API Key của bạn."
     )
     
     extra_notes = st.text_area(
