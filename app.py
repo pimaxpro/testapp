@@ -1,9 +1,8 @@
 # app.py
 import io
-import base64
 import streamlit as st
-import streamlit.components.v1 as components
 from PIL import Image
+from streamlit_paste_button import paste_png
 from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
@@ -16,20 +15,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Giao diện phẳng
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
-        # Khởi tạo Session State lưu danh sách ảnh
+        # 1. Khởi tạo State lưu danh sách ảnh
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
         if "uploader_key" not in st.session_state:
             st.session_state["uploader_key"] = 0
-        if "last_pasted_data" not in st.session_state:
-            st.session_state["last_pasted_data"] = ""
+        if "paste_counter" not in st.session_state:
+            st.session_state["paste_counter"] = 0
 
         UIComponent.render_header()
         
@@ -48,98 +46,45 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Dữ liệu đầu vào & Yêu cầu")
 
-            # --- 1. KHU VỰC DÁN CLIPBOARD CHUYÊN DỤNG ---
-            st.caption("📋 **Dán ảnh từ Clipboard:** Nhấp vào khung màu tím dưới đây rồi nhấn `Ctrl + V` (có thể dán liên tục nhiều ảnh):")
+            # --- NÚT DÁN CLIPBOARD NATIVE (CÓ HIỂN THỊ PREVIEW) ---
+            st.caption("📋 **Dán ảnh từ Clipboard:** Nhấn nút màu tím bên dưới để dán ảnh vừa copy vào danh sách:")
             
-            # Component tiếp nhận sự kiện Clipboard
-            paste_result = components.html(
-                """
-                <div id="paste-box" tabindex="0" style="
-                    border: 2px dashed #4F46E5;
-                    border-radius: 8px;
-                    padding: 14px;
-                    text-align: center;
-                    background-color: #F5F3FF;
-                    color: #4338CA;
-                    font-family: sans-serif;
-                    font-size: 14px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    outline: none;
-                ">
-                    📋 Nhấp vào đây và nhấn Ctrl + V để DÁN ẢNH
-                </div>
-
-                <script>
-                const box = document.getElementById('paste-box');
-                box.focus();
-
-                box.addEventListener('paste', function(e) {
-                    e.preventDefault();
-                    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-                    for (let item of items) {
-                        if (item.type.indexOf('image') !== -1) {
-                            const blob = item.getAsFile();
-                            const reader = new FileReader();
-                            reader.onload = function(event) {
-                                const b64 = event.target.result;
-                                window.parent.postMessage({
-                                    type: 'streamlit:setComponentValue',
-                                    value: b64 + '|' + Date.now()
-                                }, '*');
-                            };
-                            reader.readAsDataURL(blob);
-
-                            box.style.borderColor = '#10B981';
-                            box.style.backgroundColor = '#ECFDF5';
-                            box.style.color = '#047857';
-                            box.innerHTML = '✅ Đã nhận ảnh thành công! Bấm Ctrl + V tiếp để dán thêm ảnh...';
-
-                            setTimeout(() => {
-                                box.style.borderColor = '#4F46E5';
-                                box.style.backgroundColor = '#F5F3FF';
-                                box.style.color = '#4338CA';
-                                box.innerHTML = '📋 Nhấp vào đây và nhấn Ctrl + V để DÁN ẢNH';
-                            }, 1200);
-                            break;
-                        }
-                    }
-                });
-                </script>
-                """,
-                height=65
+            pasted = paste_png(
+                label="📋 Click để dán ảnh từ Clipboard",
+                text_color="#ffffff",
+                background_color="#4F46E5",
+                hover_background_color="#4338CA",
+                key="clipboard_paster_btn"
             )
 
-            # Xử lý khi nhận ảnh từ ô dán
-            if paste_result and isinstance(paste_result, str) and "|" in paste_result:
-                if paste_result != st.session_state["last_pasted_data"]:
-                    st.session_state["last_pasted_data"] = paste_result
-                    b64_str, _ = paste_result.split("|", 1)
+            # Xử lý khi có ảnh vừa dán
+            if pasted.image_data is not None:
+                img_pil = pasted.image_data
+                buf = io.BytesIO()
+                img_pil.save(buf, format="PNG")
+                file_bytes = buf.getvalue()
+
+                # Kiểm tra tránh trùng lặp khi rerun
+                if not any(f.get("bytes") == file_bytes for f in st.session_state["input_images"]):
+                    st.session_state["paste_counter"] += 1
+                    img_name = f"clipboard_{st.session_state['paste_counter']}.png"
                     
-                    if b64_str.startswith("data:image"):
-                        try:
-                            _, encoded = b64_str.split(",", 1)
-                            file_bytes = base64.b64decode(encoded)
-                            preview_img = Image.open(io.BytesIO(file_bytes))
-                            
-                            img_count = len(st.session_state["input_images"]) + 1
-                            st.session_state["input_images"].append({
-                                "name": f"clipboard_{img_count}.png",
-                                "bytes": file_bytes,
-                                "mime": "image/png",
-                                "preview": preview_img
-                            })
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Lỗi khi lưu ảnh: {e}")
+                    st.session_state["input_images"].append({
+                        "name": img_name,
+                        "bytes": file_bytes,
+                        "mime": "image/png",
+                        "preview": img_pil
+                    })
+                    st.toast(f"Đã dán thành công {img_name}!", icon="✅")
+                    st.rerun()
 
-            st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-            # --- 2. KHU VỰC HIỂN THỊ PREVIEW CÁC ẢNH ĐÃ THÊM ---
+            # --- KHU VỰC HIỂN THỊ PREVIEW DANH SÁCH ẢNH ĐÃ DÁN / UPLOAD ---
             if st.session_state["input_images"]:
                 st.markdown(f"🖼️ **Danh sách ảnh chuẩn bị chuyển đổi ({len(st.session_state['input_images'])} ảnh):**")
                 
-                # Tạo lưới 3 cột hiển thị hình thu nhỏ
+                # Tạo lưới 3 cột có hình thu nhỏ + nút xóa riêng
                 grid = st.columns(3)
                 for idx, item in enumerate(list(st.session_state["input_images"])):
                     with grid[idx % 3]:
@@ -149,15 +94,15 @@ class MathOCRApp:
                             elif item["mime"] == "application/pdf":
                                 st.write(f"📄 `{item['name']}`")
                             
-                            if st.button("🗑️ Xóa ảnh này", key=f"del_img_{idx}", use_container_width=True):
+                            if st.button("🗑️ Xóa", key=f"del_img_{idx}", use_container_width=True):
                                 st.session_state["input_images"].pop(idx)
                                 st.rerun()
             else:
-                st.info("Chưa có ảnh nào. Thầy hãy nhấp vào khung tím ở trên và nhấn Ctrl + V để dán nhé.", icon="ℹ️")
+                st.info("Chưa có ảnh nào. Thầy hãy copy ảnh rồi bấm nút màu tím ở trên để dán nhé.", icon="ℹ️")
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # --- 3. EDITOR YÊU CẦU BỔ SUNG ---
+            # --- EDITOR YÊU CẦU BỔ SUNG ---
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -172,7 +117,7 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # --- 4. HÀNG NÚT THAO TÁC UPLOAD & CONVERT ---
+            # --- HÀNG NÚT THAO TÁC UPLOAD & CONVERT ---
             act_col1, act_col2, act_col3 = st.columns([5, 3.5, 3.5])
             
             with act_col1:
@@ -190,7 +135,7 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # Xử lý Upload file từ máy tính
+            # Xử lý Upload file từ máy
             if uploaded_files:
                 has_new = False
                 for file in uploaded_files:
@@ -212,7 +157,6 @@ class MathOCRApp:
             # Nút Xóa tất cả
             if btn_clear_all:
                 st.session_state["input_images"] = []
-                st.session_state["last_pasted_data"] = ""
                 st.rerun()
 
             # Nút Convert
