@@ -1,3 +1,4 @@
+# app.py
 import io
 import streamlit as st
 from PIL import Image
@@ -13,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== STYLING GIAO DIỆN TĨNH HOÀN TOÀN (ZERO FOCUS EFFECT) ====================
+# ==================== STYLING GIAO DIỆN TĨNH HOÀN TOÀN ====================
 STUDIO_DESIGN_CSS = CUSTOM_CSS + """
 <style>
     :root {
@@ -24,13 +25,11 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         --text-color: #0F172A !important;
     }
 
-    /* 1. TRIỆT TIÊU TOÀN BỘ HIỆU ỨNG FOCUS/ACTIVE TRÊN TOÀN BỘ WEB */
     *, *:focus, *:focus-within, *:active, *:hover {
         outline: none !important;
         box-shadow: none !important;
     }
 
-    /* 2. ÉP THẺ BỌC NGOÀI CỦA BASEWEB TĨNH HOÀN TOÀN */
     div[data-baseweb="textarea"],
     div[data-baseweb="base-input"],
     div[data-baseweb="input"] {
@@ -41,7 +40,6 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         outline: none !important;
     }
 
-    /* Giữ nguyên trạng thái khi click vào (không đổi màu, không đổi viền) */
     div[data-baseweb="textarea"]:focus-within,
     div[data-baseweb="base-input"]:focus-within,
     div[data-baseweb="input"]:focus-within,
@@ -52,7 +50,6 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         outline: none !important;
     }
 
-    /* 3. THẺ TEXTAREA BÊN TRONG CŨNG TĨNH HOÀN TOÀN */
     .stTextArea textarea {
         background-color: transparent !important;
         border: none !important;
@@ -71,12 +68,10 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         outline: none !important;
     }
 
-    /* Màu chữ gợi ý (placeholder) */
     .stTextArea textarea::placeholder {
         color: #94A3B8 !important;
     }
 
-    /* 4. NÚT BẤM PHẲNG TĨNH */
     .stButton button {
         height: 42px !important;
         border-radius: 8px !important;
@@ -112,7 +107,6 @@ class MathOCRApp:
         pass
 
     def run(self):
-        # 1. Khởi tạo Session State ban đầu
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
@@ -125,7 +119,7 @@ class MathOCRApp:
         current_key = st.session_state.get("api_key", "")
         api_service = GeminiAPIService(api_key=current_key)
         
-        # 2. Render Sidebar
+        # Render Sidebar (chọn mode: LaTeX, ex_test,...)
         api_key, mode, selected_model = UIComponent.render_sidebar(api_service)
         
         api_service.api_key = api_key
@@ -138,6 +132,18 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Nội dung & Yêu cầu")
             
+            # --- TÙY CHỌN RIÊNG CHO CHẾ ĐỘ EX_TEST ---
+            add_solution = True
+            if "ex_test" in mode.lower() or "ex-test" in mode.lower():
+                st.markdown("#### ⚙️ Tùy chọn ex_test")
+                solution_opt = st.radio(
+                    "Xử lý lời giải:",
+                    options=["Thêm lời giải (Tự động giải)", "Giữ nguyên gốc"],
+                    index=0,
+                    horizontal=True
+                )
+                add_solution = (solution_opt == "Thêm lời giải (Tự động giải)")
+
             # --- BOX 1: EDITOR NHẬP VĂN BẢN/BÀI TOÁN CHÍNH ---
             main_text = st.text_area(
                 "Nội dung bài toán",
@@ -146,13 +152,12 @@ class MathOCRApp:
                 label_visibility="collapsed"
             )
 
-            # --- KHUNG HIỂN THỊ FILE ĐÃ TẢI KÈM NÚT XÓA TỪNG FILE ---
+            # --- KHUNG HIỂN THỊ FILE ĐÃ TẢI ---
             if st.session_state.get("input_images"):
                 st.caption("📷 Danh sách file/ảnh đã đính kèm:")
                 num_files = len(st.session_state["input_images"])
                 cols = st.columns(min(num_files, 4))
                 
-                # Duyệt danh sách file bằng bản sao list để xóa an toàn
                 for idx, item in enumerate(list(st.session_state["input_images"])):
                     with cols[idx % 4]:
                         with st.container(border=True):
@@ -161,7 +166,6 @@ class MathOCRApp:
                             elif item.get("preview"):
                                 st.image(item["preview"], use_container_width=True)
                             
-                            # Nút xóa đơn lẻ từng file
                             if st.button("✖ Xóa", key=f"del_{idx}", use_container_width=True):
                                 st.session_state["input_images"].pop(idx)
                                 st.rerun()
@@ -183,7 +187,7 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-            # --- HÀNG CÁC NÚT THAO TÁC CĂN ĐỀU BÊN DƯỚI ---
+            # --- HÀNG CÁC NÚT THAO TÁC ---
             act_col1, act_col2, act_col3 = st.columns([4, 3, 3])
             
             with act_col1:
@@ -201,7 +205,7 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # --- XỬ LÝ TẢI FILE NÂNG CAO (CHỐNG NHÁY/LẶP VÔ HẠN) ---
+            # --- XỬ LÝ TẢI FILE ---
             if uploaded_files:
                 has_new_file = False
                 for file in uploaded_files:
@@ -217,7 +221,6 @@ class MathOCRApp:
                         })
                         has_new_file = True
 
-                # Chỉ reset key uploader và rerun khi có file mới
                 if has_new_file:
                     st.session_state["uploader_key"] += 1
                     st.rerun()
@@ -233,7 +236,7 @@ class MathOCRApp:
                 elif not st.session_state.get("input_images") and not main_text.strip():
                     st.error("Vui lòng nhập văn bản hoặc tải file lên!", icon="⚠️")
                 else:
-                    with st.spinner("Đang xử lý toán học..."):
+                    with st.spinner("Đang xử lý cấu trúc toán học..."):
                         try:
                             combined_prompt = ""
                             if main_text.strip():
@@ -244,29 +247,13 @@ class MathOCRApp:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             input_list = st.session_state.get("input_images", [])
                             
-                            # Xử lý tương thích linh hoạt tham số gọi Processor
-                            try:
-                                result_code = processor.process(
-                                    input_data=input_list,
-                                    model=selected_model,
-                                    extra_prompt=combined_prompt
-                                )
-                            except TypeError:
-                                try:
-                                    result_code = processor.process(
-                                        image_input=input_list,
-                                        model_name=selected_model,
-                                        system_instruction="",
-                                        extra_notes=combined_prompt
-                                    )
-                                except TypeError:
-                                    first_item = input_list[0] if input_list else {"bytes": None, "mime": None}
-                                    result_code = processor.process(
-                                        file_bytes=first_item.get("bytes"),
-                                        mime_type=first_item.get("mime"),
-                                        model=selected_model,
-                                        extra_prompt=combined_prompt
-                                    )
+                            # Thực thi chuyển đổi với cờ add_solution
+                            result_code = processor.process(
+                                input_data=input_list,
+                                model=selected_model,
+                                extra_prompt=combined_prompt,
+                                add_solution=add_solution
+                            )
 
                             st.session_state["result"] = result_code
                             st.toast("Chuyển đổi hoàn tất!", icon="✅")
