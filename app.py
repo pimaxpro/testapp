@@ -5,7 +5,7 @@ from PIL import Image
 from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
-from ui import UIComponent
+from ui import UIComponent, AuthSystem
 
 st.set_page_config(
     page_title="Math OCR Studio", 
@@ -18,8 +18,22 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
+        # 1. Khóa bảo vệ: Kiểm tra đăng nhập
+        if not AuthSystem.check_auth():
+            st.stop()  # Dừng ứng dụng nếu chưa đăng nhập thành công
+
+        # 2. Khởi tạo API Key từ session state hoặc query params
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
+
+        # 3. Hiển thị thông tin người dùng & Nút đăng xuất ở Sidebar
+        with st.sidebar:
+            user_name = st.session_state.get('user_display', 'Người dùng')
+            st.markdown(f"👤 **Tài khoản:** `{user_name}`")
+            if st.button("🚪 Đăng xuất", use_container_width=True):
+                st.session_state["authenticated"] = False
+                st.rerun()
+            st.markdown("---")
 
         UIComponent.render_header()
         
@@ -35,9 +49,9 @@ class MathOCRApp:
         col1, col2 = st.columns([5, 7], gap="large")
 
         with col1:
-            st.markdown("### 📥 Dữ liệu bài toán")
+            st.markdown("### Dữ liệu bài toán")
             
-            # Sử dụng file_uploader chuẩn native: hỗ trợ cả chọn file từ máy, kéo thả, và paste Ctrl+V trực tiếp vào vùng chọn
+            # Sử dụng file_uploader chuẩn native
             uploaded_files = st.file_uploader(
                 "Tải ảnh hoặc dán (Ctrl+V) / kéo thả vào đây",
                 type=["png", "jpg", "jpeg", "webp", "pdf"],
@@ -58,9 +72,9 @@ class MathOCRApp:
                         "preview": preview_img
                     })
 
-            # Hiển thị preview rõ ràng từng ảnh để kiểm tra trước khi xử lý
+            # Hiển thị preview rõ ràng từng ảnh
             if current_inputs:
-                st.markdown(f"🖼️ **Đã chọn ({len(current_inputs)} tệp):**")
+                st.markdown(f"**Đã chọn ({len(current_inputs)} tệp):**")
                 grid = st.columns(3)
                 for idx, item in enumerate(current_inputs):
                     with grid[idx % 3]:
@@ -68,7 +82,7 @@ class MathOCRApp:
                             if item.get("preview"):
                                 st.image(item["preview"], caption=item["name"], use_container_width=True)
                             else:
-                                st.write(f"📄 `{item['name']}`")
+                                st.write(f"`{item['name']}`")
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
@@ -90,7 +104,7 @@ class MathOCRApp:
 
             if btn_process:
                 if not api_key:
-                    st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
+                    st.error("Vui lòng nhập API Key ở thanh bên!", icon="⚠️")
                 elif not current_inputs:
                     st.error("Vui lòng chọn hoặc dán ảnh bài toán trước!", icon="⚠️")
                 else:
@@ -106,10 +120,10 @@ class MathOCRApp:
                             )
 
                             st.session_state["result"] = result_code
-                            st.toast("Chuyển đổi hoàn tất!", icon="✅")
+                            st.toast("Chuyển đổi hoàn tất!", icon="🎉")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Lỗi hệ thống: {e}", icon="❌")
+                            st.error(f"Lỗi hệ thống: {e}", icon="🚨")
 
         with col2:
             UIComponent.render_output_section()
