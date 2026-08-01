@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== STYLING GIAO DIỆN STUDIO (LIGHT EDIT BOXES) ====================
+# ==================== STYLING GIAO DIỆN PHẲNG (TỐI GIẢN - KHÔNG VIỀN SÁNG) ====================
 STUDIO_DESIGN_CSS = CUSTOM_CSS + """
 <style>
     :root {
@@ -21,50 +21,61 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         --primary-hover: #4338CA !important;
         --bg-edit-box: #FFFFFF !important;
         --border-color: #CBD5E1 !important;
+        --border-focus: #94A3B8 !important;
         --text-color: #0F172A !important;
     }
 
-    /* Triệt tiêu viền đỏ mặc định của Streamlit khi focus */
-    div[data-baseweb="textarea"]:focus-within,
-    div[data-baseweb="input"]:focus-within {
-        border-color: var(--primary-color) !important;
-        box-shadow: 0 0 0 1px var(--primary-color) !important;
+    /* TRIỆT TIÊU TOÀN BỘ HIỆU ỨNG VIỀN SÁNG / GLOW / OUTLINE MẶC ĐỊNH */
+    *, *:focus, *:focus-within, *:active {
+        outline: none !important;
+        box-shadow: none !important;
     }
 
-    /* Cấu hình các khung Box Editor NỀN SÁNG */
+    div[data-baseweb="textarea"]:focus-within,
+    div[data-baseweb="input"]:focus-within {
+        border-color: var(--border-focus) !important;
+        box-shadow: none !important;
+    }
+
+    /* KHUNG BOX EDITOR NỀN SÁNG - TĨNH 100% */
     .stTextArea textarea {
         background-color: var(--bg-edit-box) !important;
-        border: 1.5px solid var(--border-color) !important;
-        border-radius: 10px !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
         color: var(--text-color) !important;
         font-size: 14px !important;
         font-weight: 450 !important;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: none !important;
+        outline: none !important;
+        transition: border-color 0.15s ease !important;
     }
     .stTextArea textarea:focus {
-        border-color: var(--primary-color) !important;
-        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
+        border-color: var(--border-focus) !important;
+        box-shadow: none !important;
+        outline: none !important;
     }
 
-    /* Đổi màu chữ gợi ý (placeholder) cho dễ đọc trên nền sáng */
+    /* Màu chữ gợi ý (placeholder) */
     .stTextArea textarea::placeholder {
-        color: #64748B !important;
+        color: #94A3B8 !important;
     }
 
-    /* Đồng bộ kiểu dáng nút bấm chân trang */
+    /* ĐỒNG BỘ KIỂU DÁNG NÚT BẤM CHÂN TRANG PHẲNG */
     .stButton button {
         height: 42px !important;
         border-radius: 8px !important;
         font-weight: 500 !important;
+        box-shadow: none !important;
+        outline: none !important;
     }
     .stButton button[kind="primary"] {
         background-color: var(--primary-color) !important;
         border: none !important;
         color: #FFFFFF !important;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
     }
     .stButton button[kind="primary"]:hover {
         background-color: var(--primary-hover) !important;
+        box-shadow: none !important;
     }
     .stButton button[kind="secondary"] {
         background-color: transparent !important;
@@ -74,6 +85,7 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
     .stButton button[kind="secondary"]:hover {
         border-color: #EF4444 !important;
         color: #EF4444 !important;
+        box-shadow: none !important;
     }
 </style>
 """
@@ -110,7 +122,7 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Nội dung & Yêu cầu")
             
-            # --- BOX 1: EDITOR NHẬP VĂN BẢN/BÀI TOÁN CHÍNH (NỀN SÁNG) ---
+            # --- BOX 1: EDITOR NHẬP VĂN BẢN/BÀI TOÁN CHÍNH ---
             main_text = st.text_area(
                 "Nội dung bài toán",
                 height=180,
@@ -140,7 +152,7 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # --- BOX 2: GHI CHÚ BỔ SUNG CHO AI (NỀN SÁNG) ---
+            # --- BOX 2: GHI CHÚ BỔ SUNG CHO AI ---
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
