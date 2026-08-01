@@ -25,7 +25,8 @@ CUSTOM_CSS = """
 # Định dạng mặc định bổ sung cho AI
 DEFAULT_EXTRA_PROMPT = """- Tái tạo chính xác từng dòng, đoạn văn và thứ tự trong file gốc.
 - Không tự ý thay đổi nội dung toán học hay các công thức.
-- Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX."""
+- Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX.
+- Chuyển chính xác cả footer, header của văn bản (nếu có)"""
 
 # Lọc các model không hỗ trợ Vision
 NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
