@@ -18,19 +18,25 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 class MathOCRApp:
     """Controller chính điều phối toàn bộ ứng dụng"""
     def __init__(self):
+        # Khởi tạo trạng thái lưu trữ API Key
         if "api_key" not in st.session_state:
-            st.session_state["api_key"] = ""
+            # Kiểm tra xem có key sẵn trên URL parameter không
+            st.session_state["api_key"] = st.query_params.get("api_key", "")
 
     def run(self):
         UIComponent.render_header()
         
-        api_service = GeminiAPIService(api_key=st.session_state.get("api_key", ""))
+        # Khởi tạo API Service với Key đã được khôi phục (nếu có)
+        current_key = st.session_state.get("api_key", "")
+        api_service = GeminiAPIService(api_key=current_key)
+        
+        # Render Sidebar & đồng bộ dữ liệu
         api_key, mode, selected_model, extra_prompt = UIComponent.render_sidebar(api_service)
         
-        st.session_state["api_key"] = api_key
+        # Cập nhật instance API Service
         api_service.api_key = api_key
-        if api_key:
-            api_service.client = api_service.client or GeminiAPIService(api_key).client
+        if api_key and not api_service.client:
+            api_service.client = GeminiAPIService(api_key).client
 
         col1, col2 = st.columns([5, 7], gap="large")
 
@@ -38,7 +44,6 @@ class MathOCRApp:
         with col1:
             st.markdown("### 1. Tải hoặc Dán Ảnh (Ctrl+V) / PDF")
             
-            # Đặt khu vực dán ảnh Clipboard lên trên
             paste_result = paste_image_button(
                 label="📋 Dán ảnh từ Clipboard (Ctrl+V)",
                 background_color="#4F46E5",
@@ -55,19 +60,18 @@ class MathOCRApp:
             file_bytes = None
             mime_type = None
 
-            # Ưu tiên lấy từ Clipboard nếu người dùng vừa dán
+            # Xử lý Clipboard
             if paste_result.image_data is not None:
                 st.info("Đã nhận ảnh từ Clipboard!")
                 image = paste_result.image_data
                 st.image(image, use_container_width=True)
                 
-                # Chuyển PIL Image sang bytes
                 buf = io.BytesIO()
                 image.save(buf, format="PNG")
                 file_bytes = buf.getvalue()
                 mime_type = "image/png"
 
-            # Nếu không dán ảnh thì kiểm tra File Uploader
+            # Xử lý File tải lên
             elif uploaded_file is not None:
                 file_bytes = uploaded_file.getvalue()
                 mime_type = uploaded_file.type
@@ -77,7 +81,7 @@ class MathOCRApp:
                 else:
                     st.image(uploaded_file, use_container_width=True)
 
-            # Nút thực thi
+            # Nút bấm thực thi
             if file_bytes:
                 if st.button("Trích xuất & Chuyển đổi Mã", type="primary", use_container_width=True, icon=":material/rocket_launch:"):
                     if not api_key:
