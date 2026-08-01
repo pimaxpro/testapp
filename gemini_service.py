@@ -1,3 +1,4 @@
+# gemini_service.py
 import time
 from google import genai
 from google.genai import types
@@ -16,17 +17,22 @@ class GeminiAPIService:
         return "gemini" in name_lower
 
     def get_available_models(self) -> list[str]:
-        if not self.client:
+        if not self.client or not self.api_key:
             return DEFAULT_MODELS
         try:
             valid_models = []
+            # Lấy danh sách model từ SDK google.genai
             for m in self.client.models.list():
                 name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
                 if self.is_vision_model(name):
                     valid_models.append(name)
-            valid_models.sort(key=lambda x: ("lite" in x, "pro" in x, "preview" in x))
-            return valid_models if valid_models else DEFAULT_MODELS
+            
+            if valid_models:
+                valid_models.sort(key=lambda x: ("lite" in x, "pro" in x, "preview" in x))
+                return valid_models
+            return DEFAULT_MODELS
         except Exception:
+            # Phòng trường hợp Key lỗi/chờ duyệt để UI không bị trắng mất dropdown mô hình
             return DEFAULT_MODELS
 
     def generate_content(
@@ -100,8 +106,10 @@ class GeminiAPIService:
             except Exception as e:
                 last_exception = e
                 err_str = str(e)
-                if any(err in err_str for err in ["400", "INVALID_ARGUMENT", "404", "NOT_FOUND"]):
+                # Bỏ qua các lỗi liên quan đến model không tìm thấy hoặc sai argument để chuyển model dự phòng
+                if any(err in err_str for err in ["400", "INVALID_ARGUMENT", "404", "NOT_FOUND", "401", "UNAUTHENTICATED"]):
                     continue
+                # Nếu chạm giới hạn Rate Limit (429), nghỉ 2 giây rồi chuyển sang model tiếp theo
                 if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
                     time.sleep(2)
                     continue
