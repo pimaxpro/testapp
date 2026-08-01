@@ -8,83 +8,111 @@ from ui import UIComponent
 from streamlit_paste_button import paste_image_button
 
 st.set_page_config(
-    page_title="Math OCR Pro - OOP Studio", 
+    page_title="Math OCR Pro - Studio", 
     page_icon="🧮", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# STYLING AN TOÀN - KHÔNG CAN THIỆP SÂU VÀO CẤU TRÚC FILE UPLOADER
-STUDIO_THEME_CSS = CUSTOM_CSS + """
+# STYLING FIX SIZE & CHUẨN MÀU STUDIO MONOCHROME
+FIXED_LAYOUT_CSS = CUSTOM_CSS + """
 <style>
-    /* Đồng bộ tông màu chính Indigo */
     :root {
-        --primary-color: #4F46E5 !important;
+        --primary-indigo: #4F46E5 !important;
         --primary-hover: #4338CA !important;
-        --accent-glow: rgba(79, 70, 229, 0.2) !important;
-        --bg-card: #181825 !important;
-        --border-color: #313244 !important;
+        --bg-editor: #181825 !important;
+        --border-subtle: #313244 !important;
+        --text-color: #CDD6F4 !important;
     }
 
-    /* Đổi màu viền và hiệu ứng Focus mặc định thành màu Indigo (Không có màu đỏ) */
-    div[data-baseweb="input"]:focus-within, 
-    div[data-baseweb="textarea"]:focus-within {
-        border-color: #4F46E5 !important;
-        box-shadow: 0 0 0 1px #4F46E5 !important;
+    /* Triệt tiêu màu đỏ viền focus mặc định */
+    div[data-baseweb="textarea"]:focus-within,
+    div[data-baseweb="input"]:focus-within {
+        border-color: var(--primary-indigo) !important;
+        box-shadow: 0 0 0 1px var(--primary-indigo) !important;
     }
 
-    /* Tùy chỉnh Nút Paste gọn gàng */
-    div[data-testid="stCustomComponentV1"] iframe {
-        height: 48px !important;
-        width: 100% !important;
+    /* 1. KHUNG EDITOR CHÍNH - FIX KÍCH THƯỚC CỐ ĐỊNH */
+    .editor-container-box {
+        background-color: var(--bg-editor);
+        border: 1.5px solid var(--border-subtle);
+        border-radius: 12px;
+        padding: 14px;
+        height: 220px !important; /* Cố định độ cao khung main */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
     }
 
-    /* Tùy chỉnh File Uploader đẹp mắt, chuẩn tỉ lệ, không bị vỡ Icon */
+    /* Tối ưu Upload Dropzone nằm lọt lòng bên trong Box Editor */
     div[data-testid="stFileUploader"] section {
-        background-color: #1E1E2E !important;
-        border: 1.5px dashed #4F46E5 !important;
+        background-color: rgba(255, 255, 255, 0.02) !important;
+        border: 1px dashed var(--border-subtle) !important;
         border-radius: 8px !important;
-        padding: 12px !important;
+        padding: 10px !important;
+        height: 120px !important; /* Fix độ cao vùng kéo thả */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     div[data-testid="stFileUploader"] section:hover {
-        border-color: #6366F1 !important;
+        border-color: var(--primary-indigo) !important;
         background-color: rgba(79, 70, 229, 0.05) !important;
     }
 
-    /* Nút bấm đồng bộ 1 màu Indigo */
+    /* Căn chỉnh lại nút Clipboard góc trên */
+    div[data-testid="stCustomComponentV1"] iframe {
+        height: 38px !important;
+        width: 100% !important;
+    }
+
+    /* 2. KHUNG PROMPT PHÍA DƯỚI - FIX KÍCH THƯỚC CỐ ĐỊNH */
+    .stTextArea textarea {
+        background-color: var(--bg-editor) !important;
+        border: 1.5px solid var(--border-subtle) !important;
+        border-radius: 10px !important;
+        color: var(--text-color) !important;
+        font-size: 13.5px !important;
+        height: 80px !important; /* Cố định độ cao khung Prompt */
+        resize: none !important;
+    }
+
+    /* 3. NÚT CONVERT Ở GÓC DƯỚI BÊN PHẢI */
     .stButton button[kind="primary"] {
-        background-color: #4F46E5 !important;
+        background-color: var(--primary-indigo) !important;
         border: none !important;
-        height: 44px !important;
+        height: 42px !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
+        font-size: 15px !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
     }
     .stButton button[kind="primary"]:hover {
-        background-color: #4338CA !important;
-        box-shadow: 0 4px 12px var(--accent-glow) !important;
+        background-color: var(--primary-hover) !important;
+        box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4) !important;
     }
     .stButton button[kind="secondary"] {
         background-color: transparent !important;
-        border: 1px solid var(--border-color) !important;
-        color: #CDD6F4 !important;
-        height: 44px !important;
+        border: 1px solid var(--border-subtle) !important;
+        color: #A6ADC8 !important;
+        height: 42px !important;
         border-radius: 8px !important;
     }
     .stButton button[kind="secondary"]:hover {
-        border-color: #4F46E5 !important;
-        color: #4F46E5 !important;
+        border-color: var(--primary-indigo) !important;
+        color: var(--primary-indigo) !important;
     }
 </style>
 """
-st.markdown(STUDIO_THEME_CSS, unsafe_allow_html=True)
+st.markdown(FIXED_LAYOUT_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
-    """Controller chính điều phối toàn bộ ứng dụng"""
     def __init__(self):
         pass
 
     def run(self):
-        # KHỞI TẠO SESSION STATE AN TOÀN
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
@@ -104,27 +132,31 @@ class MathOCRApp:
 
         col1, col2 = st.columns([5, 7], gap="large")
 
-        # CỘT 1: INPUT COMPONENT
+        # CỘT 1: THIẾT KẾ KHUNG CỐ ĐỊNH THEO WIREFRAME
         with col1:
-            st.markdown("### 📥 Dữ liệu đầu vào")
+            st.markdown("### 📥 Box Editor Đầu Vào")
             
-            # Nút Clipboard nằm gọn gàng ở trên
-            paste_result = paste_image_button(
-                label="📋 Dán ảnh từ Clipboard (Ctrl + V)",
-                background_color="#4F46E5",
-                text_color="#FFFFFF",
-                hover_background_color="#4338CA",
-            )
+            # --- BOX 1: EDITOR MAIN CONTAINER (FIXED SIZE) ---
+            head_col, btn_col = st.columns([6, 4])
+            with head_col:
+                st.caption("Dán hoặc kéo thả ảnh/PDF vào đây:")
+            with btn_col:
+                # Nút Dán Clipboard nằm gọn bên trên góc phải
+                paste_result = paste_image_button(
+                    label="📋 Paste Clipboard",
+                    background_color="#4F46E5",
+                    text_color="#FFFFFF",
+                    hover_background_color="#4338CA",
+                )
 
-            # Box Upload tệp nằm ngay bên dưới
             uploaded_files = st.file_uploader(
-                "Hoặc tải lên nhiều tệp Ảnh / PDF", 
+                "Upload Box", 
                 type=["png", "jpg", "jpeg", "webp", "pdf"],
                 accept_multiple_files=True,
-                label_visibility="visible"
+                label_visibility="collapsed"
             )
 
-            # Xử lý Clipboard
+            # Xử lý Paste
             if paste_result.image_data is not None:
                 image = paste_result.image_data
                 buf = io.BytesIO()
@@ -141,12 +173,11 @@ class MathOCRApp:
                     })
                     st.toast("Đã dán ảnh!", icon="📋")
 
-            # Xử lý File Uploaded
+            # Xử lý Upload
             if uploaded_files:
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
                     mime_type = file.type
-                    
                     if not any(item.get("name") == file.name for item in st.session_state["input_images"]):
                         preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
                         st.session_state["input_images"].append({
@@ -156,45 +187,40 @@ class MathOCRApp:
                             "preview": preview_img
                         })
 
-            # HIỂN THỊ DANH SÁCH TỆP ĐÃ NHẬN
+            # Thanh hiển thị danh sách các tệp đã nhận
             if st.session_state.get("input_images"):
-                st.caption(f"📸 Đã chọn **{len(st.session_state['input_images'])}** tệp:")
                 cols = st.columns(min(len(st.session_state["input_images"]), 4))
                 for idx, item in enumerate(st.session_state["input_images"]):
                     with cols[idx % 4]:
                         if item["mime"] == "application/pdf":
-                            st.info(f"📄 {item['name'][:8]}..", icon=":material/description:")
+                            st.info(f"📄 {item['name'][:6]}..", icon=":material/description:")
                         elif item.get("preview"):
                             st.image(item["preview"], use_container_width=True)
 
-            # YÊU CẦU BỔ SUNG
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+            # --- BOX 2: YÊU CẦU BỔ SUNG AI (FIXED SIZE 80PX) ---
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
             extra_prompt = st.text_area(
-                "💡 Yêu cầu bổ sung cho AI", 
+                "Yêu cầu bổ sung cho AI", 
                 value=st.session_state["extra_notes_val"],
-                height=100,
-                placeholder="Lưu ý định dạng LaTeX đặc biệt nếu có..."
+                placeholder="Điền nội dung yêu cầu thêm AI vào box này...",
+                label_visibility="collapsed"
             )
             st.session_state["extra_notes_val"] = extra_prompt
 
-            # NÚT THỰC THI (XỬ LÝ / XÓA)
-            btn_col1, btn_col2 = st.columns([7, 3], gap="small")
-            with btn_col1:
-                btn_process = st.button(
-                    "🚀 Trích xuất & Chuyển đổi", 
-                    type="primary", 
-                    use_container_width=True
-                )
-            with btn_col2:
-                btn_clear = st.button(
-                    "🗑️ Xóa hết", 
-                    type="secondary", 
-                    use_container_width=True
-                )
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-            # SỰ KIỆN NÚT BẤM
+            # --- DƯỚI CÙNG: NÚT ACTION CĂN PHẢI ---
+            b_col1, b_col2, b_col3 = st.columns([4, 3, 3])
+            with b_col2:
+                btn_clear = st.button("🗑️ Xóa tệp", type="secondary", use_container_width=True)
+            with b_col3:
+                btn_process = st.button("Convert", type="primary", use_container_width=True)
+
+            # Sự kiện thực thi
             if btn_clear:
                 st.session_state["input_images"] = []
                 if "last_pasted" in st.session_state:
@@ -203,11 +229,11 @@ class MathOCRApp:
 
             if btn_process:
                 if not api_key:
-                    st.error("Vui lòng nhập API Key ở thanh bên trái!", icon="🔑")
+                    st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
                 elif not st.session_state.get("input_images"):
-                    st.error("Chưa chọn ảnh/PDF nào!", icon="🖼️")
+                    st.error("Chưa có ảnh/PDF nào trong Box Editor!", icon="🖼️")
                 else:
-                    with st.spinner("Đang xử lý mã toán..."):
+                    with st.spinner("Đang trích xuất mã toán..."):
                         try:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             input_list = st.session_state["input_images"]
@@ -228,10 +254,10 @@ class MathOCRApp:
                                 )
 
                             st.session_state["result"] = result_code
-                            st.toast("Trích xuất hoàn tất!", icon="✅")
+                            st.toast("Đã chuyển đổi xong!", icon="✅")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Lỗi xử lý: {e}", icon="❌")
+                            st.error(f"Lỗi: {e}", icon="❌")
 
         # CỘT 2: OUTPUT LATEX CODE
         with col2:
