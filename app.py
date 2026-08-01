@@ -3,8 +3,11 @@ from google import genai
 from google.genai import types
 from PIL import Image
 import io
+import time
 
-# Cấu hình trang web
+# -----------------------------------------------------------------------------
+# Cấu hình Trang Web Streamlit
+# -----------------------------------------------------------------------------
 st.set_page_config(page_title="Math OCR - Chuyển ảnh sang LaTeX", page_icon="🧮", layout="wide")
 
 st.markdown("""
@@ -14,13 +17,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# System Instruction nâng cao cho Toán học & LaTeX
+# -----------------------------------------------------------------------------
+# System Instruction chuẩn hóa cho Math OCR & LaTeX
+# -----------------------------------------------------------------------------
 SYSTEM_INSTRUCTION = """
 Bạn là một chuyên gia OCR Toán học nâng cao và biên soạn tài liệu LaTeX chuyên nghiệp.
 Nhiệm vụ của bạn là nhận diện chính xác nội dung công thức toán học, bài toán, bảng biến thiên, hoặc đồ thị từ hình ảnh và chuyển đổi sang mã LaTeX chuẩn.
 
 Quy tắc bắt buộc:
-1. TRẢ VỀ MÃ LATEX THUẦN TÚY, KHÔNG kèm các câu dẫn dắt hay giải thích.
+1. TRẢ VỀ MÃ LATEX THUẦN TÚY, KHÔNG kèm các câu dẫn dắt hay giải thích (như "Đây là mã LaTeX...").
 2. Đảm bảo đúng các chuẩn ký hiệu toán học: phân số (\\frac), tích phân (\\int), căn thức (\\sqrt), giới hạn (\\lim), ma trận (matrix/pmatrix), các ký hiệu Hy Lạp, v.v.
 3. Nếu ảnh là BẢNG BIẾN THIÊN hoặc ĐỒ THỊ, ưu tiên chuyển đổi thành mã gói `tkz-tab` hoặc môi trường `array`/`tikzpicture` chuẩn.
 4. Nếu hình ảnh chứa bài toán nhiều dòng, sử dụng môi trường align*, gather*, hoặc split phù hợp.
@@ -33,17 +38,15 @@ def get_available_models(api_key: str):
         client = genai.Client(api_key=api_key)
         models_list = []
         for m in client.models.list():
-            # Lấy tên model (loại bỏ tiền tố 'models/' nếu có)
             name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
-            # Chỉ lấy các dòng model gemini xử lý multimodal/generateContent
             if "gemini" in name.lower():
                 models_list.append(name)
-        return models_list if models_list else ["gemini-2.5-flash", "gemini-1.5-flash"]
+        return models_list if models_list else ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
     except Exception:
-        # Danh sách dự phòng chuẩn của SDK
-        return ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"]
+        return ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
 
 def convert_image(image_bytes: bytes, mime_type: str, api_key: str, model_name: str, extra_prompt: str) -> str:
+    """Gọi Gemini API xử lý ảnh với cơ chế fallback tự động nếu dính lỗi 429 Quota"""
     client = genai.Client(api_key=api_key)
     prompt = "Hãy nhận diện và chuyển đổi chính xác toàn bộ biểu thức/nội dung toán học trong ảnh này thành mã LaTeX chuẩn."
     
@@ -51,25 +54,45 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, model_name: 
     if extra_prompt.strip():
         sys_prompt += f"\nYêu cầu bổ sung từ người dùng: {extra_prompt.strip()}"
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-            prompt
-        ],
-        config=types.GenerateContentConfig(
-            system_instruction=sys_prompt,
-            temperature=0.1
-        )
-    )
-    return response.text
+    # Danh sách ưu tiên chuyển đổi nếu mô hình được chọn chạm trần Rate Limit (429)
+    fallback_models = [model_name, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    fallback_models = list(dict.fromkeys(fallback_models)) # Bỏ trùng lặp
 
+    last_exception = None
+
+    for m in fallback_models:
+        try:
+            response = client.models.generate_content(
+                model=m,
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    prompt
+                ],
+                config=types.GenerateContentConfig(
+                    system_instruction=sys_prompt,
+                    temperature=0.1
+                )
+            )
+            return response.text
+        except Exception as e:
+            last_exception = e
+            # Nếu dính lỗi 429 (Resource Exhausted), tạm nghỉ 2s rồi thử model tiếp theo
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                time.sleep(2)
+                continue
+            else:
+                raise e
+
+    raise last_exception
+
+# -----------------------------------------------------------------------------
 # Thanh bên (Sidebar)
+# -----------------------------------------------------------------------------
 with st.sidebar:
     st.title("⚙️ Cấu hình App")
     api_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
     
-    # Tự động lấy danh sách Model khả dụng theo API Key
+    # Tự động quét Model khả dụng
     available_models = []
     if api_key:
         available_models = get_available_models(api_key)
@@ -88,7 +111,9 @@ with st.sidebar:
         placeholder="VD: Nếu là bảng biến thiên hãy dùng gói tkz-tab..."
     )
 
-# Giao diện chính
+# -----------------------------------------------------------------------------
+# Giao diện chính (Main UI)
+# -----------------------------------------------------------------------------
 st.title("🧮 Math Image to LaTeX Web App")
 st.caption("Ứng dụng nhận diện và chuyển đổi công thức toán học từ ảnh sang mã LaTeX.")
 
@@ -110,7 +135,7 @@ with col2:
                 try:
                     res = convert_image(uploaded.getvalue(), uploaded.type, api_key, model_choice, extra_notes)
                     
-                    # Làm sạch chuỗi kết quả
+                    # Làm sạch mã LaTeX trả về
                     clean_res = res.strip()
                     if clean_res.startswith("```latex"):
                         clean_res = clean_res[8:]
