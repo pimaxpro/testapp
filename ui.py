@@ -6,9 +6,10 @@ from config import DEFAULT_EXTRA_PROMPT
 class AuthSystem:
     # Danh sách tài khoản & mật khẩu
     USERS = {
-        "admin": "123456",
-        "thayduong": "math2026",
-        "teacher": "latex123"
+        "0839032003": "2003",
+        "0343763310": "3310",
+        "0943170177": "0177",
+        "0934682505": "2505"
     }
 
     @classmethod
@@ -41,65 +42,62 @@ class AuthSystem:
 
 
 class UIComponent:
-    # --- KHU VỰC LƯU TRỮ API KEY DÙNG CHUNG (THẦY CẬP NHẬT TẠI ĐÂY) ---
+    # --- KHU VỰC LƯU TRỮ API KEY DÙNG CHUNG ---
     SYSTEM_API_KEYS = {
-        "Key Hệ Thống 1 (Chính)": "AQ.Ab8RN6LCTf6mo4nUUrCqAqlDYI8B6oFAGQGu7YzIjGcDiRBKeA",
+        "Key Hệ Thống 1 (Chính)": "AQ.Ab8RN6K1eOQa7aiXkYNdPtpKcnDSXLw7zTK7SrUvw01Cdf1-gw",
         "Key Hệ Thống 2 (Dự phòng 1)": "AQ.Ab8RN6L3v5pf216_mHlBksO3Py44wnlxmicDCzTS99Th-pao1w",
-        "Key Hệ Thống 3 (Dự phòng 2)": "AQ.Ab8RN6K1eOQa7aiXkYNdPtpKcnDSXLw7zTK7SrUvw01Cdf1-gw"
+        "Key Hệ Thống 3 (Dự phòng 2)": "AQ.Ab8RN6LCTf6mo4nUUrCqAqlDYI8B6oFAGQGu7YzIjGcDiRBKeA"
     }
 
     @staticmethod
     def render_header():
         st.markdown("<h1 class='header-title'>Math OCR Pro Studio</h1>", unsafe_allow_html=True)
-        st.markdown("Tổ toán cấp 3 Minh Hoàng")
+        st.markdown("Quý nào cũng đạt KPI nhé!")
         st.write("")
 
     @staticmethod
     def render_sidebar(api_service: GeminiAPIService):
         with st.sidebar:
-            st.markdown("## :material/settings: Cấu hình & Chức năng")
-            st.markdown("---")
+            st.markdown("## ⚙️ Cấu hình & Chức năng")
             
-            st.markdown("### 🔑 Cấu hình Gemini API Key")
-            
-            # Tùy chọn nguồn API Key
+            # --- Nhóm 1: Cấu hình API Key ---
+            st.markdown("##### 🔑 Cấu hình Gemini API Key")
             key_source = st.radio(
                 "Nguồn API Key:",
                 options=["Dùng Key mặc định (Kho hệ thống)", "Nhập Key cá nhân"],
                 index=0,
-                horizontal=False
+                horizontal=True,
+                label_visibility="collapsed"
             )
 
             active_api_key = ""
-
             if key_source == "Dùng Key mặc định (Kho hệ thống)":
-                # Lựa chọn 1 trong các Key có sẵn trong kho
                 selected_key_label = st.selectbox(
                     "Chọn Key hệ thống khả dụng:",
-                    options=list(UIComponent.SYSTEM_API_KEYS.keys())
+                    options=list(UIComponent.SYSTEM_API_KEYS.keys()),
+                    label_visibility="collapsed"
                 )
                 active_api_key = UIComponent.SYSTEM_API_KEYS.get(selected_key_label, "")
-                st.caption("🟢 *Đang sử dụng API Key do hệ thống cung cấp.*")
-
+                st.caption("🟢 *Đang sử dụng API Key hệ thống.*")
             else:
-                # Nhập Key cá nhân
                 saved_key = st.session_state.get("api_key_custom", "")
                 active_api_key = st.text_input(
-                    "Nhập Gemini API Key của bạn:", 
+                    "Nhập Gemini API Key cá nhân:", 
                     value=saved_key, 
                     type="password",
-                    help="Key của bạn sẽ được ưu tiên sử dụng riêng."
+                    placeholder="AIzaSy...",
+                    label_visibility="collapsed"
                 )
                 st.session_state["api_key_custom"] = active_api_key
                 if active_api_key:
-                    st.caption(":material/check_circle: *Đã ghi nhận Key cá nhân.*")
+                    st.caption("🟢 *Đã ghi nhận Key cá nhân.*")
 
-            # Cập nhật Key vào Session State chung
+            # Cập nhật Key vào Session State và gán trực tiếp cho service
             st.session_state["api_key"] = active_api_key
+            api_service.api_key = active_api_key
 
-            st.markdown("---")
-
-            # Danh sách 3 chức năng chính
+            # --- Nhóm 2: Chức năng Processing ---
+            st.markdown("##### 📝 Chức năng Processing")
             mode = st.selectbox(
                 "Chọn Chức năng Processing",
                 options=["latex", "ex_test", "tikz"],
@@ -107,24 +105,29 @@ class UIComponent:
                     "latex": "📄 1. Chuyển file sang Latex",
                     "ex_test": "📝 2. Chuyển bài toán sang ex_test",
                     "tikz": "🎨 3. Chuyển ảnh sang tikz"
-                }[x]
+                }[x],
+                label_visibility="collapsed"
             )
 
-            # Tùy chọn lời giải cho ex_test
             add_solution = False
             if mode == "ex_test":
                 solution_option = st.radio(
                     "Tùy chọn lời giải:",
                     options=["Giữ nguyên gốc", "Thêm lời giải (Tự động giải)"],
                     index=0,
-                    help="Chọn tự động giải chi tiết hoặc giữ nguyên khung lời giải như đề gốc."
+                    horizontal=True
                 )
                 add_solution = (solution_option == "Thêm lời giải (Tự động giải)")
 
-            st.markdown("---")
-
-            available_models = api_service.get_available_models() if active_api_key else ["Vui lòng chọn/nhập API Key"]
-            model_choice = st.selectbox("Mô hình Gemini Vision", available_models, index=0)
+            # --- Nhóm 3: Mô hình AI ---
+            st.markdown("##### 🤖 Mô hình Gemini Vision")
+            available_models = api_service.get_available_models()
+            model_choice = st.selectbox(
+                "Mô hình Gemini Vision", 
+                available_models, 
+                index=0,
+                label_visibility="collapsed"
+            )
 
             return active_api_key, mode, model_choice, add_solution
 
@@ -198,7 +201,7 @@ class UIComponent:
             latex_code = st.session_state["result"]
             
             if "\\begin{tkz" in latex_code or "\\begin{tikzpicture}" in latex_code:
-                st.warning("Phát hiện mã đồ thị / Bảng biến thiên (TikZ/tkz-tab)", icon=":material/draw:")
+                st.warning("Phát hiện mã đồ thị / Bảng biến thiên (TikZ/tkz-tab)", icon="🎨")
             
             st.code(latex_code, language="latex", line_numbers=True)
 
@@ -207,4 +210,4 @@ class UIComponent:
 
     @staticmethod
     def render_empty_state():
-        st.info("Chưa có kết quả. Vui lòng tải/dán ảnh và bấm nút trích xuất.", icon=":material/info:")
+        st.info("Chưa có kết quả. Vui lòng tải/dán ảnh và bấm nút trích xuất.", icon="ℹ️")
