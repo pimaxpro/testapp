@@ -1,57 +1,27 @@
 import streamlit as st
 
-# Custom CSS cho giao diện
 CUSTOM_CSS = """
     <style>
-    /* Tổng thể giao diện */
     .main .block-container { 
         padding-top: 1.5rem; 
         padding-bottom: 2rem;
-        max-width: 98%;
+        max-width: 95%;
     }
-    
-    /* Font chung & Header */
     .header-title {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        font-weight: 800;
-        background: linear-gradient(90deg, #6366F1, #06B6D4);
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        background: linear-gradient(90deg, #4F46E5, #06B6D4);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
     
-    /* CSS Giả lập Editor Overleaf cho Streamlit Textarea */
-    div[data-baseweb="textarea"] {
-        background-color: #1e1e1e !important;
-        border: 1px solid #333333 !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.25) !important;
-    }
-    
+    /* Ép font Consolas/Monospace trực tiếp vào ô Code duy nhất */
     div[data-baseweb="textarea"] textarea {
-        font-family: 'Consolas', 'Fira Code', 'Courier New', monospace !important;
-        font-size: 13.5px !important;
-        line-height: 1.6 !important;
-        color: #d4d4d4 !important;
-        background-color: #1e1e1e !important;
-        padding: 14px 16px !important;
-        tab-size: 4 !important;
-        caret-color: #569cd6 !important;
+        font-family: 'Consolas', 'Courier New', monospace !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
     }
     
-    div[data-baseweb="textarea"] textarea:focus {
-        border-color: #007acc !important;
-        box-shadow: 0 0 0 1px #007acc !important;
-    }
-
-    /* Đóng gói lại Style Nút bấm Toolbar chuyên nghiệp */
-    .stButton > button {
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        border-radius: 6px !important;
-        padding: 4px 10px !important;
-        transition: all 0.2s ease !important;
-    }
-
     footer {visibility: hidden;}
     </style>
 """
