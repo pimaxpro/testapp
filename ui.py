@@ -7,13 +7,13 @@ class UIComponent:
     @staticmethod
     def render_header():
         st.markdown("<h1 class='header-title'>Math OCR Pro Studio</h1>", unsafe_allow_html=True)
-        st.markdown("Hệ thống chuyển đổi **Ảnh / PDF / Clipboard** thành mã **ex_test**, **TikZ**, và **Tự động soạn Lời giải**.")
+        st.markdown("Chuyển đổi **Ảnh / PDF** thành mã **LaTeX (ex_test, TikZ)** chuẩn định dạng.")
         st.write("")
 
     @staticmethod
     def render_sidebar(api_service: GeminiAPIService):
         with st.sidebar:
-            st.markdown("## :material/settings: Cấu hình & Chức năng")
+            st.markdown("## :material/settings: Cấu hình hệ thống")
             st.markdown("---")
             
             saved_key = st.session_state.get("api_key", "")
@@ -27,7 +27,7 @@ class UIComponent:
                 "Gemini API Key", 
                 value=saved_key, 
                 type="password",
-                help="Key sẽ được tự động ghi nhớ cho các lần truy cập sau trên trình duyệt này."
+                help="Key sẽ được tự động lưu trên trình duyệt."
             )
             
             if api_key_input != st.session_state.get("api_key", ""):
@@ -36,22 +36,22 @@ class UIComponent:
                 st.rerun()
 
             if api_key_input:
-                st.caption(":material/check_circle: *Đã lưu API Key cho phiên làm việc này*")
+                st.caption(":material/check_circle: *Đã kết nối API Key*")
 
             st.markdown("---")
 
             mode = st.selectbox(
-                "Chọn Chức năng Processing",
+                "Chế độ xử lý",
                 options=["ex_test", "ex_test_solve", "tikz"],
                 format_func=lambda x: {
-                    "ex_test": "📄 OCR sang gói ex_test (Đề thi)",
-                    "ex_test_solve": "🧠 ex_test + Tự soạn Lời giải",
-                    "tikz": "🎨 Chuyển Hình vẽ -> Mã TikZ"
+                    "ex_test": "📄 Soạn đề ex_test",
+                    "ex_test_solve": "🧠 ex_test + Tự giải",
+                    "tikz": "🎨 Chuyển hình -> TikZ"
                 }[x]
             )
 
             available_models = api_service.get_available_models() if api_key_input else ["Vui lòng nhập API Key"]
-            model_choice = st.selectbox("Mô hình Gemini Vision", available_models, index=0)
+            model_choice = st.selectbox("Mô hình Vision", available_models, index=0)
 
             st.markdown("---")
 
@@ -59,9 +59,9 @@ class UIComponent:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
             extra_notes = st.text_area(
-                "Ghi chú / Yêu cầu định dạng AI", 
+                "Yêu cầu định dạng bổ sung", 
                 value=st.session_state["extra_notes_val"],
-                height=130
+                height=120
             )
             st.session_state["extra_notes_val"] = extra_notes
 
@@ -69,47 +69,43 @@ class UIComponent:
 
     @staticmethod
     def render_editor_section():
-        """Khu vực LaTeX Code Editor chuyên nghiệp với 20+ tính năng"""
-        st.markdown("### :material/edit_note: 2. LaTeX Code Editor Studio")
+        st.markdown("### :material/terminal: Overleaf-style LaTeX Editor")
 
-        # Lấy mã hiện tại trong session_state
         current_code = st.session_state.get("result", "")
 
         if not current_code:
             st.markdown(
                 """
-                <div style="border: 2px dashed rgba(128, 128, 128, 0.3); border-radius: 12px; padding: 60px 20px; text-align: center; color: #888888; margin-top: 10px;">
-                    <p style="font-size: 40px; margin-bottom: 10px;">📝</p>
-                    <p style="font-weight: 500;">Mã LaTeX sau khi OCR sẽ tự động nạp vào Editor ở đây để chỉnh sửa trực tiếp.</p>
+                <div style="background-color: #1e1e1e; border: 1px dashed #444; border-radius: 8px; padding: 50px 20px; text-align: center; color: #888; margin-top: 10px;">
+                    <p style="font-size: 32px; margin-bottom: 5px;">💻</p>
+                    <p style="font-family: Consolas, monospace; font-size: 13px;">// Mã LaTeX sau khi OCR sẽ hiển thị ở đây với giao diện Overleaf...</p>
                 </div>
                 """, 
                 unsafe_allow_html=True
             )
             return
 
-        # --- THANH CÔNG CỤ TOOLBAR (20+ TÍNH NĂNG) ---
-        
-        # Hàng 1: Quản lý File, Export & Restore
-        t1, t2, t3, t4, t5 = st.columns([2, 2, 2, 2, 2])
-        with t1:
+        # --- TOOLBAR PHONG CÁCH OVERLEAF ---
+        c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 2, 2])
+        with c1:
             st.download_button(
                 "📥 Tải .tex", 
                 data=current_code, 
-                file_name="math_output.tex", 
+                file_name="main.tex", 
                 mime="text/x-tex",
                 use_container_width=True
             )
-        with t2:
-            if st.button("🔄 Khôi phục gốc", use_container_width=True, help="Khôi phục về bản OCR ban đầu"):
+        with c2:
+            if st.button("🔄 Undo OCR", use_container_width=True, help="Reset về bản gốc"):
                 st.session_state["result"] = st.session_state.get("raw_result", "")
                 st.rerun()
-        with t3:
-            if st.button("🧹 Dọn khoảng trắng", use_container_width=True, help="Xóa dòng trống & space thừa"):
+        with c3:
+            if st.button("🧹 Format Space", use_container_width=True):
                 cleaned = re.sub(r'\n\s*\n', '\n', current_code)
                 st.session_state["result"] = cleaned.strip()
                 st.rerun()
-        with t4:
-            if st.button("💬 Toggle Comment", use_container_width=True, help="Thêm/Xóa dấu % đầu mỗi dòng"):
+        with c4:
+            if st.button("💬 Comment %", use_container_width=True):
                 lines = current_code.split('\n')
                 if lines[0].startswith('%'):
                     lines = [l[1:] if l.startswith('%') else l for l in lines]
@@ -117,28 +113,28 @@ class UIComponent:
                     lines = ['%' + l for l in lines]
                 st.session_state["result"] = '\n'.join(lines)
                 st.rerun()
-        with t5:
-            if st.button("❌ Xóa tất cả", use_container_width=True):
+        with c5:
+            if st.button("🗑️ Clear", use_container_width=True):
                 st.session_state["result"] = ""
                 st.rerun()
 
-        # Hàng 2: Chèn nhanh cấu trúc ex_test & TikZ
-        st.caption("⚡ **Chèn nhanh môi trường & Cấu trúc:**")
-        b1, b2, b3, b4, b5 = st.columns(5)
-        with b1:
-            if st.button("➕ \\begin{ex}", use_container_width=True):
+        # BAR CHÈN SNIPPETS
+        st.caption("🚀 **Snippet Cú Pháp:**")
+        s1, s2, s3, s4, s5 = st.columns(5)
+        with s1:
+            if st.button("+ \\begin{ex}", use_container_width=True):
                 st.session_state["result"] += "\n\\begin{ex}\n\n\\end{ex}"
                 st.rerun()
-        with b2:
-            if st.button("🔘 \\choice", use_container_width=True):
-                st.session_state["result"] += "\n\\choice\n{A}\n{B}\n{C}\n{D}"
+        with s2:
+            if st.button("+ \\choice", use_container_width=True):
+                st.session_state["result"] += "\n\\choice{A}{B}{C}{D}"
                 st.rerun()
-        with b3:
-            if st.button("📝 \\loigiai", use_container_width=True):
+        with s3:
+            if st.button("+ \\loigiai", use_container_width=True):
                 st.session_state["result"] += "\n\\loigiai{\n\n}"
                 st.rerun()
-        with b4:
-            if st.button("📈 TikZ Plot", use_container_width=True):
+        with s4:
+            if st.button("+ TikZ Plot", use_container_width=True):
                 snippet = "\n\\begin{tikzpicture}[line cap=round,line join=round,font=\\scriptsize,>=stealth']\n" \
                           "   \\tikzset{declare function={f(\\x)=\\x^2 - 2*\\x;}}\n" \
                           "   \\begin{scope}\n" \
@@ -148,8 +144,8 @@ class UIComponent:
                           "\\end{tikzpicture}"
                 st.session_state["result"] += snippet
                 st.rerun()
-        with b5:
-            if st.button("📊 Bảng BBT", use_container_width=True):
+        with s5:
+            if st.button("+ Bảng BBT", use_container_width=True):
                 snippet = "\n\\begin{tikzpicture}\n" \
                           "   \\tkzTabInit{$x$ /1, $y'$ /1, $y$ /2}{$-\\infty$, $0$, $+\\infty$}\n" \
                           "   \\tkzTabLine{, +, z, -, }\n" \
@@ -158,36 +154,34 @@ class UIComponent:
                 st.session_state["result"] += snippet
                 st.rerun()
 
-        # Hàng 3: Tìm kiếm & Thay thế (Find & Replace)
-        with st.expander("🔍 **Tìm kiếm & Thay thế chuỗi (Find & Replace)**"):
+        # FIND & REPLACE OVERLEAF STYLE
+        with st.expander("🔍 Tìm kiếm & Thay thế"):
             f_col1, f_col2, f_col3 = st.columns([4, 4, 2])
-            find_txt = f_col1.text_input("Tìm chuỗi", key="find_t")
-            replace_txt = f_col2.text_input("Thay thế bằng", key="rep_t")
-            if f_col3.button("Thay thế hết", use_container_width=True):
+            find_txt = f_col1.text_input("Find", key="f_in")
+            replace_txt = f_col2.text_input("Replace", key="r_in")
+            if f_col3.button("Replace All", use_container_width=True):
                 if find_txt:
                     st.session_state["result"] = current_code.replace(find_txt, replace_txt)
                     st.rerun()
 
-        # --- KHU VỰC EDITOR CHỈNH SỬA TRỰC TIẾP ---
+        # --- MAIN OVERLEAF CODE EDITOR ---
         edited_code = st.text_area(
             "Mã LaTeX Editor",
             value=current_code,
-            height=480,
-            key="latex_editor_area",
+            height=520,
+            key="overleaf_editor",
             label_visibility="collapsed"
         )
 
-        # Cập nhật state nếu người dùng tự gõ chỉnh sửa trên text_area
         if edited_code != current_code:
             st.session_state["result"] = edited_code
 
-        # --- THANH THỐNG KÊ PHÍA DƯỚI EDITOR ---
+        # STATUS BAR DƯỚI EDITOR
         num_lines = len(edited_code.split('\n'))
-        num_words = len(edited_code.split())
+        num_chars = len(edited_code)
         num_ex = edited_code.count(r'\begin{ex}')
-        num_tikz = edited_code.count(r'\begin{tikzpicture}')
 
         st.caption(
-            f"📊 **Thống kê Editor:** {num_lines} dòng | {num_words} từ | "
-            f"Thấy **{num_ex}** câu `ex` | **{num_tikz}** hình `tikzpicture`"
+            f"🟢 **Overleaf Engine Active** | {num_lines} lines | {num_chars} chars | "
+            f"Found **{num_ex}** `ex` environments"
         )
