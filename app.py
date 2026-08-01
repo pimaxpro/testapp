@@ -20,12 +20,28 @@ Bạn là một chuyên gia OCR Toán học nâng cao và biên soạn tài li�
 Nhiệm vụ của bạn là nhận diện chính xác nội dung công thức toán học, bài toán, bảng biến thiên, hoặc đồ thị từ hình ảnh và chuyển đổi sang mã LaTeX chuẩn.
 
 Quy tắc bắt buộc:
-1. TRẢ VỀ MÃ LATEX THUẦN TÚY, KHÔNG kèm các câu dẫn dắt hay giải thích (như "Đây là mã LaTeX...").
+1. TRẢ VỀ MÃ LATEX THUẦN TÚY, KHÔNG kèm các câu dẫn dắt hay giải thích.
 2. Đảm bảo đúng các chuẩn ký hiệu toán học: phân số (\\frac), tích phân (\\int), căn thức (\\sqrt), giới hạn (\\lim), ma trận (matrix/pmatrix), các ký hiệu Hy Lạp, v.v.
 3. Nếu ảnh là BẢNG BIẾN THIÊN hoặc ĐỒ THỊ, ưu tiên chuyển đổi thành mã gói `tkz-tab` hoặc môi trường `array`/`tikzpicture` chuẩn.
 4. Nếu hình ảnh chứa bài toán nhiều dòng, sử dụng môi trường align*, gather*, hoặc split phù hợp.
 5. Giữ nguyên cấu trúc logic của bài toán.
 """
+
+def get_available_models(api_key: str):
+    """Lấy danh sách các model thực tế hỗ trợ generateContent từ API Key của bạn"""
+    try:
+        client = genai.Client(api_key=api_key)
+        models_list = []
+        for m in client.models.list():
+            # Lấy tên model (loại bỏ tiền tố 'models/' nếu có)
+            name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
+            # Chỉ lấy các dòng model gemini xử lý multimodal/generateContent
+            if "gemini" in name.lower():
+                models_list.append(name)
+        return models_list if models_list else ["gemini-2.5-flash", "gemini-1.5-flash"]
+    except Exception:
+        # Danh sách dự phòng chuẩn của SDK
+        return ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash"]
 
 def convert_image(image_bytes: bytes, mime_type: str, api_key: str, model_name: str, extra_prompt: str) -> str:
     client = genai.Client(api_key=api_key)
@@ -53,17 +69,18 @@ with st.sidebar:
     st.title("⚙️ Cấu hình App")
     api_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
     
-    # Danh sách Model chuẩn, cập nhật chính xác tên API
+    # Tự động lấy danh sách Model khả dụng theo API Key
+    available_models = []
+    if api_key:
+        available_models = get_available_models(api_key)
+    else:
+        available_models = ["Vui lòng nhập API Key trước"]
+        
     model_choice = st.selectbox(
-        "Mô hình Gemini", 
-        [
-            "gemini-2.0-flash",          # Mô hình thế hệ mới, tốc độ cực nhanh (Khuyên dùng)
-            "gemini-2.0-flash-lite",     # Bản tối ưu tốc độ và hạn ngạch
-            "gemini-1.5-flash-latest",    # Alias bản Flash 1.5 ổn định
-            "gemini-1.5-pro-latest"       # Alias bản Pro 1.5
-        ],
+        "Mô hình Gemini khả dụng", 
+        available_models,
         index=0,
-        help="Khuyên dùng gemini-2.0-flash để đạt tốc độ nhận diện cao nhất và hạn ngạch thoải mái."
+        help="Danh sách mô hình được truy vấn trực tiếp từ tài khoản Google AI của bạn."
     )
     
     extra_notes = st.text_area(
@@ -93,7 +110,7 @@ with col2:
                 try:
                     res = convert_image(uploaded.getvalue(), uploaded.type, api_key, model_choice, extra_notes)
                     
-                    # Làm sạch chuỗi kết quả trả về
+                    # Làm sạch chuỗi kết quả
                     clean_res = res.strip()
                     if clean_res.startswith("```latex"):
                         clean_res = clean_res[8:]
@@ -112,9 +129,8 @@ with col2:
         latex = st.session_state["result"]
         tab1, tab2 = st.tabs(["👁️ Xem trước (Render)", "💻 Mã LaTeX"])
         with tab1:
-            # Nếu là mã tkz-tab/tikzpicture thì thông báo xem mã bên tab Code
             if "\\begin{tkz" in latex or "\\begin{tikzpicture}" in latex:
-                st.info("📌 Đoạn mã chứa môi trường TikZ/tkz-tab nâng cao. Bạn hãy sang tab 'Mã LaTeX' để copy vào biên dịch trên Overleaf/LaTeX Editor.")
+                st.info("📌 Đoạn mã chứa môi trường TikZ/tkz-tab. Bạn hãy copy mã bên tab 'Mã LaTeX' để dán vào Overleaf/LaTeX Editor.")
             st.markdown(f"$${latex}$$")
         with tab2:
             st.code(latex, language="latex")
