@@ -26,16 +26,14 @@ class MathOCRApp:
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
 
-        # 3. Hiển thị thông tin người dùng & Nút đăng xuất gọn gàng trên 1 hàng ở Sidebar
+        # 3. Hiển thị thông tin người dùng & Nút đăng xuất ở Sidebar
         with st.sidebar:
-            col_usr, col_logout = st.columns([6, 4], vertical_alignment="center")
-            with col_usr:
-                user_name = st.session_state.get('user_display', 'Người dùng')
-                st.markdown(f"👤 **`{user_name}`**")
-            with col_logout:
-                if st.button("Đăng xuất", use_container_width=True):
-                    st.session_state["authenticated"] = False
-                    st.rerun()
+            user_name = st.session_state.get('user_display', 'Người dùng')
+            st.markdown(f"👤 **Tài khoản:** `{user_name}`")
+            if st.button("🚪 Đăng xuất", use_container_width=True):
+                st.session_state["authenticated"] = False
+                st.rerun()
+            st.markdown("---")
 
         UIComponent.render_header()
         
@@ -106,7 +104,7 @@ class MathOCRApp:
 
             if btn_process:
                 if not api_key:
-                    st.error("Vui lòng chọn hoặc nhập API Key ở thanh bên!", icon="⚠️")
+                    st.error("Vui lòng nhập API Key ở thanh bên!", icon="⚠️")
                 elif not current_inputs:
                     st.error("Vui lòng chọn hoặc dán ảnh bài toán trước!", icon="⚠️")
                 else:
