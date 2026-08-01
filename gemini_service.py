@@ -18,18 +18,21 @@ class GeminiAPIService:
     @api_key.setter
     def api_key(self, value: str):
         """Mỗi khi gán/thay đổi api_key, tự động khởi tạo lại Client để nhận đủ Model"""
-        if self._api_key != value:
-            self._api_key = value
-            if value and value.strip():
+        cleaned_key = value.strip() if value else ""
+        if self._api_key != cleaned_key:
+            self._api_key = cleaned_key
+            if cleaned_key:
                 try:
-                    self.client = genai.Client(api_key=value)
-                except Exception:
+                    self.client = genai.Client(api_key=cleaned_key)
+                except Exception as e:
+                    print(f"[GeminiService Debug] Lỗi khởi tạo Client: {e}")
                     self.client = None
             else:
                 self.client = None
 
     def is_vision_model(self, model_name: str) -> bool:
         name_lower = model_name.lower()
+        # Loại bỏ các model không hỗ trợ vision (như embedding, text-only cũ, ttl, etc.)
         for keyword in NON_VISION_KEYWORDS:
             if keyword in name_lower:
                 return False
@@ -42,16 +45,27 @@ class GeminiAPIService:
             
         try:
             valid_models = []
-            for m in self.client.models.list():
-                name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
-                if self.is_vision_model(name):
-                    valid_models.append(name)
+            # Bắt toàn bộ danh sách model từ SDK mới
+            models_pager = self.client.models.list()
+            
+            for m in models_pager:
+                # Trích xuất model ID chuẩn từ SDK google-genai
+                model_id = getattr(m, 'name', str(m))
+                if "/" in model_id:
+                    model_id = model_id.split("/")[-1]
+                
+                if self.is_vision_model(model_id) and model_id not in valid_models:
+                    valid_models.append(model_id)
             
             if valid_models:
-                valid_models.sort(key=lambda x: ("lite" in x, "pro" in x, "preview" in x))
+                # Sắp xếp ưu tiên các dòng flash, pro
+                valid_models.sort(key=lambda x: ("flash" not in x, "pro" not in x, x))
                 return valid_models
+            
             return DEFAULT_MODELS
-        except Exception:
+        except Exception as e:
+            # In lỗi chi tiết ra Terminal để dễ phát hiện nguyên nhân
+            print(f"[GeminiService Debug] Lỗi khi lấy danh sách model: {e}")
             return DEFAULT_MODELS
 
     def generate_content(
