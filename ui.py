@@ -19,7 +19,7 @@ class AuthSystem:
             st.session_state["authenticated"] = False
 
         if not st.session_state["authenticated"]:
-            st.markdown("<h2 style='text-align: center; margin-top: 2rem;'>Tài khoản: Số điện thoại, Mật khẩu: bốn số cuối của SĐT</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='text-align: center; margin-top: 2rem;'>Liên hệ bé Tuấn để có tài khoản nhé!</h2>", unsafe_allow_html=True)
             st.write("")
             
             col1, col2, col3 = st.columns([1, 2, 1])
