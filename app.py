@@ -1,9 +1,8 @@
 # app.py
 import io
-import base64
 import streamlit as st
-import streamlit.components.v1 as components
 from PIL import Image
+from streamlit_paste_button import paste_png
 from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
@@ -21,13 +20,15 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
-        # Khởi tạo Session State
+        # Khởi tạo Session State chuẩn
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
         if "uploader_key" not in st.session_state:
             st.session_state["uploader_key"] = 0
+        if "paste_counter" not in st.session_state:
+            st.session_state["paste_counter"] = 0
 
         UIComponent.render_header()
         
@@ -46,98 +47,46 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Dữ liệu đầu vào & Yêu cầu")
 
-            # 1. KHU VỰC DÁN CLIPBOARD (Sử dụng Javascript Event listener đồng bộ)
-            st.caption("📋 **Dán ảnh từ Clipboard:** Click chọn ô bên dưới rồi bấm `Ctrl + V`")
+            # --- 1. NÚT DÁN ANH TỪ CLIPBOARD (NATIVE & BỀN VỮNG) ---
+            st.caption("📋 **Dán ảnh từ Clipboard:** Nhấn nút bên dưới để dán ảnh vừa copy vào danh sách:")
             
-            # Khung Paste sử dụng JavaScript truyền dữ liệu liên tục không bị mất state
-            paste_html = """
-            <div id="paste-box" contenteditable="true" style="
-                border: 2px dashed #4F46E5;
-                border-radius: 8px;
-                padding: 15px;
-                text-align: center;
-                background-color: #F5F3FF;
-                color: #4338CA;
-                font-family: sans-serif;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                outline: none;
-                min-height: 50px;
-            ">
-                📌 Click chọn ô này và bấm <b>Ctrl + V</b> để dán ảnh
-            </div>
+            pasted_image = paste_png(
+                label="📋 Click để dán ảnh từ Clipboard",
+                text_color="#ffffff",
+                background_color="#4F46E5",
+                hover_background_color="#4338CA",
+                key="clipboard_paster"
+            )
 
-            <script>
-            const box = document.getElementById('paste-box');
-            box.addEventListener('paste', (e) => {
-                e.preventDefault();
-                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-                for (let item of items) {
-                    if (item.type.indexOf('image') !== -1) {
-                        const blob = item.getAsFile();
-                        const reader = new FileReader();
-                        reader.onload = function(event) {
-                            const b64 = event.target.result;
-                            window.parent.postMessage({
-                                type: 'streamlit:setComponentValue',
-                                value: b64
-                            }, '*');
-                        };
-                        reader.readAsDataURL(blob);
-                        
-                        box.style.borderColor = '#10B981';
-                        box.style.backgroundColor = '#ECFDF5';
-                        box.style.color = '#047857';
-                        box.innerHTML = '✅ Đã nhận ảnh! Thầy có thể dán tiếp ảnh khác...';
-                        setTimeout(() => {
-                            box.style.borderColor = '#4F46E5';
-                            box.style.backgroundColor = '#F5F3FF';
-                            box.style.color = '#4338CA';
-                            box.innerHTML = '📌 Click chọn ô này và bấm <b>Ctrl + V</b> để dán ảnh';
-                        }, 1500);
-                        break;
-                    }
-                }
-            });
-            </script>
-            """
-            
-            pasted_b64 = components.html(paste_html, height=70)
+            # Xử lý khi có dữ liệu ảnh dán vào
+            if pasted_image.image_data is not None:
+                # Chuyển image_data (PIL Image) sang Bytes để lưu bền vững
+                img_pil = pasted_image.image_data
+                buf = io.BytesIO()
+                img_pil.save(buf, format="PNG")
+                file_bytes = buf.getvalue()
 
-            # Xử lý NẠP VÀO SESSION STATE ngay khi phát hiện Base64 mới
-            if pasted_b64 and isinstance(pasted_b64, str) and pasted_b64.startswith("data:image"):
-                try:
-                    _, encoded = pasted_b64.split(",", 1)
-                    file_bytes = base64.b64decode(encoded)
+                # Kiểm tra xem ảnh này đã được nạp vào danh sách chưa (chống lặp khi rerun)
+                if not any(f.get("bytes") == file_bytes for f in st.session_state["input_images"]):
+                    st.session_state["paste_counter"] += 1
+                    img_name = f"clipboard_{st.session_state['paste_counter']}.png"
                     
-                    # Kiểm tra trùng lặp với ảnh cuối cùng
-                    is_duplicate = False
-                    if st.session_state["input_images"]:
-                        last_bytes = st.session_state["input_images"][-1].get("bytes")
-                        if last_bytes == file_bytes:
-                            is_duplicate = True
+                    st.session_state["input_images"].append({
+                        "name": img_name,
+                        "bytes": file_bytes,
+                        "mime": "image/png",
+                        "preview": img_pil
+                    })
+                    st.toast(f"Đã nhận {img_name}!", icon="✅")
+                    st.rerun()
 
-                    if not is_duplicate:
-                        preview_img = Image.open(io.BytesIO(file_bytes))
-                        img_idx = len(st.session_state["input_images"]) + 1
-                        st.session_state["input_images"].append({
-                            "name": f"clipboard_{img_idx}.png",
-                            "bytes": file_bytes,
-                            "mime": "image/png",
-                            "preview": preview_img
-                        })
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Lỗi đọc ảnh từ clipboard: {e}")
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-            st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-
-            # 2. KHU VỰC HIỂN THỊ PREVIEW CÁC ẢNH ĐÃ DÁN / UPLOAD (BẮT BUỘC HIỂN THỊ)
+            # --- 2. KHU VỰC PREVIEW DANH SÁCH ẢNH ĐÃ DÁN / UPLOAD ---
             if st.session_state["input_images"]:
-                st.markdown(f"🖼️ **Ảnh đã dán/tải lên ({len(st.session_state['input_images'])}):**")
+                st.markdown(f"🖼️ **Danh sách ảnh chuẩn bị xử lý ({len(st.session_state['input_images'])}):**")
                 
-                # Hiển thị dạng lưới (Grid) 3 cột
+                # Hiển thị dạng lưới (Grid) 3 cột có hình thu nhỏ
                 grid = st.columns(3)
                 for idx, item in enumerate(list(st.session_state["input_images"])):
                     with grid[idx % 3]:
@@ -151,11 +100,11 @@ class MathOCRApp:
                                 st.session_state["input_images"].pop(idx)
                                 st.rerun()
             else:
-                st.warning("⚠️ Chưa có ảnh nào trong danh sách. Hãy nhấn Ctrl+V ở ô trên hoặc bấm Upload.", icon="ℹ️")
+                st.info("💡 Chưa có ảnh nào. Thầy dán ảnh hoặc bấm Upload file ở bên dưới nhé.", icon="ℹ️")
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # 3. EDITOR YÊU CẦU BỔ SUNG
+            # --- 3. EDITOR YÊU CẦU BỔ SUNG ---
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -170,7 +119,7 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # 4. HÀNG NÚT THAO TÁC
+            # --- 4. HÀNG NÚT THAO TÁC ---
             act_col1, act_col2, act_col3 = st.columns([5, 3.5, 3.5])
             
             with act_col1:
