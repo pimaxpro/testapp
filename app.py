@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== STYLING GIAO DIỆN STUDIO ====================
+# ==================== STYLING GIAO DIỆN STUDIO MONOCHROME ====================
 STUDIO_DESIGN_CSS = CUSTOM_CSS + """
 <style>
     :root {
@@ -31,7 +31,7 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         box-shadow: 0 0 0 1px var(--primary-color) !important;
     }
 
-    /* Cấu hình khung Box Editor */
+    /* Cấu hình các khung Box Editor */
     .stTextArea textarea {
         background-color: var(--bg-card) !important;
         border: 1.5px solid var(--border-color) !important;
@@ -45,7 +45,7 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         box-shadow: 0 0 0 1px var(--primary-color) !important;
     }
 
-    /* Đồng bộ nút bấm chân trang */
+    /* Đồng bộ kiểu dáng nút bấm chân trang */
     .stButton button {
         height: 42px !important;
         border-radius: 8px !important;
@@ -77,7 +77,7 @@ class MathOCRApp:
         pass
 
     def run(self):
-        # 1. Khởi tạo State ban đầu
+        # 1. Khởi tạo Session State ban đầu
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
@@ -117,7 +117,7 @@ class MathOCRApp:
                 num_files = len(st.session_state["input_images"])
                 cols = st.columns(min(num_files, 4))
                 
-                # Duyệt danh sách an toàn để hỗ trợ xóa
+                # Duyệt danh sách file bằng bản sao list để xóa an toàn
                 for idx, item in enumerate(list(st.session_state["input_images"])):
                     with cols[idx % 4]:
                         with st.container(border=True):
@@ -182,7 +182,7 @@ class MathOCRApp:
                         })
                         has_new_file = True
 
-                # Chỉ làm mới key uploader và rerun khi thực sự nhận thêm file mới
+                # Chỉ reset key uploader và rerun khi có file mới
                 if has_new_file:
                     st.session_state["uploader_key"] += 1
                     st.rerun()
@@ -209,6 +209,7 @@ class MathOCRApp:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             input_list = st.session_state.get("input_images", [])
                             
+                            # Xử lý tương thích linh hoạt tham số gọi Processor
                             try:
                                 result_code = processor.process(
                                     input_data=input_list,
@@ -216,13 +217,21 @@ class MathOCRApp:
                                     extra_prompt=combined_prompt
                                 )
                             except TypeError:
-                                first_item = input_list[0] if input_list else {"bytes": None, "mime": None}
-                                result_code = processor.process(
-                                    file_bytes=first_item.get("bytes"),
-                                    mime_type=first_item.get("mime"),
-                                    model=selected_model,
-                                    extra_prompt=combined_prompt
-                                )
+                                try:
+                                    result_code = processor.process(
+                                        image_input=input_list,
+                                        model_name=selected_model,
+                                        system_instruction="",
+                                        extra_notes=combined_prompt
+                                    )
+                                except TypeError:
+                                    first_item = input_list[0] if input_list else {"bytes": None, "mime": None}
+                                    result_code = processor.process(
+                                        file_bytes=first_item.get("bytes"),
+                                        mime_type=first_item.get("mime"),
+                                        model=selected_model,
+                                        extra_prompt=combined_prompt
+                                    )
 
                             st.session_state["result"] = result_code
                             st.toast("Chuyển đổi hoàn tất!", icon="✅")
