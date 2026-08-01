@@ -22,7 +22,7 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
-        # Khởi tạo Session State
+        # 1. Khởi tạo Session State chính xác
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
@@ -47,126 +47,128 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Dữ liệu đầu vào")
 
-            # --- KHUNG EDITOR DÁN ẢNH DẠNG WORD / NOTION ---
-            st.caption("📄 **Khung dán bài toán:** Click chuột vào vùng bên dưới và nhấn `Ctrl + V` để dán ảnh (dán bao nhiêu ảnh tùy thích):")
+            # --- KHUNG EDITOR DÁN ẢNH CHUẨN ĐỒNG BỘ ---
+            st.caption("📄 **Khung dán bài toán:** Click vào khung bên dưới và bấm `Ctrl + V` để dán ảnh (dán liên tiếp nhiều ảnh):")
             
-            word_editor_html = """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.4.0/dist/streamlit-component-lib.js"></script>
-                <style>
-                    body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-                    #editor {
-                        border: 1px solid #CBD5E1;
-                        border-radius: 8px;
-                        background-color: #FFFFFF;
-                        min-height: 140px;
-                        padding: 12px;
-                        outline: none;
-                        font-size: 14px;
-                        color: #64748B;
-                        box-sizing: border-box;
-                    }
-                    #editor:focus {
-                        border-color: #4F46E5;
-                        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-                    }
-                    #editor img {
-                        max-width: 180px;
-                        max-height: 140px;
-                        margin: 6px;
-                        border-radius: 6px;
-                        border: 1px solid #E2E8F0;
-                        vertical-align: middle;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    }
-                    .placeholder {
-                        color: #94A3B8;
-                        pointer-events: none;
-                    }
-                </style>
-            </head>
-            <body>
-                <div id="editor" contenteditable="true">
-                    <span class="placeholder">Click vào đây và nhấn <b>Ctrl + V</b> để dán ảnh vào bài làm...</span>
-                </div>
-
-                <script>
-                    const editor = document.getElementById('editor');
-                    let images = [];
-
-                    function updateHeight() {
-                        const h = Math.max(150, editor.scrollHeight + 10);
-                        Streamlit.setFrameHeight(h);
-                    }
-
-                    window.addEventListener('load', () => {
-                        updateHeight();
-                    });
-
-                    editor.addEventListener('focus', () => {
-                        const placeholder = editor.querySelector('.placeholder');
-                        if (placeholder) {
-                            placeholder.remove();
+            pasted_b64 = components.html(
+                """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.4.0/dist/streamlit-component-lib.js"></script>
+                    <style>
+                        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+                        #editor {
+                            border: 2px dashed #6366F1;
+                            border-radius: 8px;
+                            background-color: #F5F3FF;
+                            min-height: 100px;
+                            padding: 16px;
+                            outline: none;
+                            font-size: 14px;
+                            color: #4338CA;
+                            text-align: center;
+                            font-weight: 600;
+                            cursor: pointer;
+                            box-sizing: border-box;
+                            user-select: none;
                         }
-                    });
+                        #editor:focus {
+                            border-color: #4F46E5;
+                            background-color: #EEF2FF;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div id="editor" tabindex="0">
+                        📋 Nhấp chuột vào đây rồi nhấn Ctrl + V để DÁN ẢNH
+                    </div>
 
-                    editor.addEventListener('paste', (e) => {
-                        e.preventDefault();
-                        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-                        for (let item of items) {
-                            if (item.type.indexOf('image') !== -1) {
-                                const file = item.getAsFile();
-                                const reader = new FileReader();
-                                reader.onload = (evt) => {
-                                    const b64 = evt.target.result;
-                                    
-                                    // Tạo thẻ img hiển thị trực tiếp trong editor như Word
-                                    const imgNode = document.createElement('img');
-                                    imgNode.src = b64;
-                                    editor.appendChild(imgNode);
-                                    
-                                    images.push(b64);
-                                    
-                                    // Báo dữ liệu về cho Streamlit
-                                    Streamlit.setComponentValue(JSON.stringify(images));
-                                    updateHeight();
-                                };
-                                reader.readAsDataURL(file);
+                    <script>
+                        const editor = document.getElementById('editor');
+                        
+                        window.addEventListener('load', () => {
+                            Streamlit.setFrameHeight(110);
+                            editor.focus();
+                        });
+
+                        editor.addEventListener('paste', (e) => {
+                            e.preventDefault();
+                            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                            for (let item of items) {
+                                if (item.type.indexOf('image') !== -1) {
+                                    const file = item.getAsFile();
+                                    const reader = new FileReader();
+                                    reader.onload = (evt) => {
+                                        const b64 = evt.target.result;
+                                        // Gửi dữ liệu về cho Streamlit ngay lập tức
+                                        Streamlit.setComponentValue(b64);
+                                    };
+                                    reader.readAsDataURL(file);
+
+                                    editor.style.backgroundColor = '#D1FAE5';
+                                    editor.style.borderColor = '#10B981';
+                                    editor.style.color = '#065F46';
+                                    editor.innerText = '✅ Đã nhận ảnh! Thầy có thể Ctrl + V tiếp...';
+                                    setTimeout(() => {
+                                        editor.style.backgroundColor = '#F5F3FF';
+                                        editor.style.borderColor = '#6366F1';
+                                        editor.style.color = '#4338CA';
+                                        editor.innerText = '📋 Nhấp chuột vào đây rồi nhấn Ctrl + V để DÁN ẢNH';
+                                    }, 1000);
+                                    break;
+                                }
                             }
-                        }
-                    });
-                </script>
-            </body>
-            </html>
-            """
+                        });
+                    </script>
+                </body>
+                </html>
+                """,
+                height=115
+            )
 
-            pasted_json = components.html(word_editor_html, height=160)
-
-            # Đọc danh sách ảnh dán trực tiếp từ Editor
-            pasted_b64_list = []
-            if pasted_json:
+            # Xử lý nạp ảnh vào Session State khi phát hiện dữ liệu dán
+            if pasted_b64 and isinstance(pasted_b64, str) and pasted_b64.startswith("data:image"):
                 try:
-                    pasted_b64_list = json.loads(pasted_json)
-                except Exception:
-                    pasted_b64_list = []
-
-            # Nạp danh sách ảnh từ Editor vào mảng dữ liệu gửi AI
-            current_pasted_images = []
-            for idx, b64_str in enumerate(pasted_b64_list):
-                if b64_str.startswith("data:image"):
-                    _, encoded = b64_str.split(",", 1)
+                    _, encoded = pasted_b64.split(",", 1)
                     file_bytes = base64.b64decode(encoded)
-                    preview_img = Image.open(io.BytesIO(file_bytes))
-                    current_pasted_images.append({
-                        "name": f"Pasted_Image_{idx+1}.png",
-                        "bytes": file_bytes,
-                        "mime": "image/png",
-                        "preview": preview_img
-                    })
+                    
+                    # Tránh lưu trùng lặp dữ liệu
+                    if not any(f.get("bytes") == file_bytes for f in st.session_state["input_images"]):
+                        preview_img = Image.open(io.BytesIO(file_bytes))
+                        img_count = len(st.session_state["input_images"]) + 1
+                        st.session_state["input_images"].append({
+                            "name": f"Pasted_Image_{img_count}.png",
+                            "bytes": file_bytes,
+                            "mime": "image/png",
+                            "preview": preview_img
+                        })
+                        st.toast(f"Đã nhận ảnh {img_count}!", icon="📋")
+                        st.rerun()
+                except Exception as e:
+                    pass
 
-            st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+
+            # --- PREVIEW DANH SÁCH ẢNH ĐÃ DÁN / UPLOAD (KHẮC PHỤC TRIỆT ĐỂ LỖI THIẾU ẢNH) ---
+            if st.session_state["input_images"]:
+                st.markdown(f"🖼️ **Danh sách ảnh chuẩn bị Convert ({len(st.session_state['input_images'])} ảnh):**")
+                grid = st.columns(3)
+                for idx, item in enumerate(list(st.session_state["input_images"])):
+                    with grid[idx % 3]:
+                        with st.container(border=True):
+                            if item.get("preview"):
+                                st.image(item["preview"], caption=item["name"], use_container_width=True)
+                            elif item["mime"] == "application/pdf":
+                                st.write(f"📄 `{item['name']}`")
+                            
+                            if st.button("🗑️ Xóa", key=f"del_img_{idx}", use_container_width=True):
+                                st.session_state["input_images"].pop(idx)
+                                st.rerun()
+            else:
+                st.info("Chưa có ảnh nào trong bộ nhớ. Thầy nhấp vào khung màu tím ở trên rồi bấm **Ctrl + V** nhé.", icon="ℹ️")
+
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
             # --- EDITOR YÊU CẦU BỔ SUNG ---
             st.caption("💡 **Yêu cầu bổ sung cho AI:**")
@@ -202,20 +204,24 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # Tổng hợp toàn bộ ảnh (từ Khung dán Word + File Upload)
-            all_images = list(current_pasted_images)
+            # Upload file từ máy
             if uploaded_files:
+                has_new = False
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
                     mime_type = file.type
-                    if not any(f.get("name") == file.name for f in all_images):
+                    if not any(f.get("name") == file.name for f in st.session_state["input_images"]):
                         preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
-                        all_images.append({
+                        st.session_state["input_images"].append({
                             "name": file.name,
                             "bytes": file_bytes,
                             "mime": mime_type,
                             "preview": preview_img
                         })
+                        has_new = True
+                if has_new:
+                    st.session_state["uploader_key"] += 1
+                    st.rerun()
 
             # Xóa sạch
             if btn_clear_all:
@@ -227,15 +233,15 @@ class MathOCRApp:
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
-                elif not all_images:
-                    st.error("Vui lòng dán ảnh vào khung Word Editor hoặc chọn file ở bên dưới!", icon="⚠️")
+                elif not st.session_state["input_images"]:
+                    st.error("Vui lòng dán ảnh vào khung ở trên hoặc chọn file từ máy!", icon="⚠️")
                 else:
                     with st.spinner("Đang xử lý cấu trúc toán học..."):
                         try:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             
                             result_code = processor.process(
-                                input_data=all_images,
+                                input_data=st.session_state["input_images"],
                                 model=selected_model,
                                 extra_prompt=extra_prompt,
                                 add_solution=add_solution
