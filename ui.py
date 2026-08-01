@@ -33,7 +33,7 @@ class AuthSystem:
                         if username in cls.USERS and cls.USERS[username] == password:
                             st.session_state["authenticated"] = True
                             st.session_state["user_display"] = username
-                            st.toast(f"Xin chào {username}!", icon="")
+                            st.toast(f"Xin chào {username}!", icon="👋")
                             st.rerun()
                         else:
                             st.error("Tên đăng nhập hoặc mật khẩu không chính xác!")
