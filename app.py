@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# STYLING GIAO DIỆN CHUYÊN NGHIỆP, SANG TRỌNG
+# ==================== STYLING GIAO DIỆN STUDIO ====================
 STUDIO_DESIGN_CSS = CUSTOM_CSS + """
 <style>
     :root {
@@ -24,7 +24,14 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         --text-muted: #A6ADC8 !important;
     }
 
-    /* Khung Box Editor */
+    /* Triệt tiêu viền đỏ mặc định của Streamlit khi focus */
+    div[data-baseweb="textarea"]:focus-within,
+    div[data-baseweb="input"]:focus-within {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 1px var(--primary-color) !important;
+    }
+
+    /* Cấu hình khung Box Editor */
     .stTextArea textarea {
         background-color: var(--bg-card) !important;
         border: 1.5px solid var(--border-color) !important;
@@ -38,16 +45,7 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
         box-shadow: 0 0 0 1px var(--primary-color) !important;
     }
 
-    /* Khung chứa các file/ảnh đã tải lên */
-    .file-preview-card {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 8px;
-        margin-top: 6px;
-    }
-
-    /* Đồng bộ kiểu dáng cho các nút bấm action */
+    /* Đồng bộ nút bấm chân trang */
     .stButton button {
         height: 42px !important;
         border-radius: 8px !important;
@@ -61,6 +59,15 @@ STUDIO_DESIGN_CSS = CUSTOM_CSS + """
     .stButton button[kind="primary"]:hover {
         background-color: var(--primary-hover) !important;
     }
+    .stButton button[kind="secondary"] {
+        background-color: transparent !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-muted) !important;
+    }
+    .stButton button[kind="secondary"]:hover {
+        border-color: #EF4444 !important;
+        color: #EF4444 !important;
+    }
 </style>
 """
 st.markdown(STUDIO_DESIGN_CSS, unsafe_allow_html=True)
@@ -70,17 +77,20 @@ class MathOCRApp:
         pass
 
     def run(self):
+        # 1. Khởi tạo State ban đầu
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
+        if "uploader_key" not in st.session_state:
+            st.session_state["uploader_key"] = 0
 
         UIComponent.render_header()
         
         current_key = st.session_state.get("api_key", "")
         api_service = GeminiAPIService(api_key=current_key)
         
-        # SIDEBAR
+        # 2. Render Sidebar
         api_key, mode, selected_model = UIComponent.render_sidebar(api_service)
         
         api_service.api_key = api_key
@@ -89,7 +99,7 @@ class MathOCRApp:
 
         col1, col2 = st.columns([5, 7], gap="large")
 
-        # ==================== CỘT 1 ====================
+        # ==================== CỘT 1: INPUT & CONTROLS ====================
         with col1:
             st.markdown("### 📥 Nội dung & Yêu cầu")
             
@@ -101,14 +111,13 @@ class MathOCRApp:
                 label_visibility="collapsed"
             )
 
-            # --- DẢI HIỂN THỊ FILE KÈM NÚT XÓA TỪNG FILE ---
+            # --- KHUNG HIỂN THỊ FILE ĐÃ TẢI KÈM NÚT XÓA TỪNG FILE ---
             if st.session_state.get("input_images"):
                 st.caption("📷 Danh sách file/ảnh đã đính kèm:")
-                # Chia lưới tối đa 4 file trên 1 hàng
                 num_files = len(st.session_state["input_images"])
                 cols = st.columns(min(num_files, 4))
                 
-                # Duyệt danh sách file (dùng copy để xóa an toàn)
+                # Duyệt danh sách an toàn để hỗ trợ xóa
                 for idx, item in enumerate(list(st.session_state["input_images"])):
                     with cols[idx % 4]:
                         with st.container(border=True):
@@ -117,14 +126,14 @@ class MathOCRApp:
                             elif item.get("preview"):
                                 st.image(item["preview"], use_container_width=True)
                             
-                            # Nút xóa từng file
+                            # Nút xóa đơn lẻ từng file
                             if st.button("✖ Xóa", key=f"del_{idx}", use_container_width=True):
                                 st.session_state["input_images"].pop(idx)
                                 st.rerun()
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # --- BOX 2: YÊU CẦU BỔ SUNG CHO AI ---
+            # --- BOX 2: GHI CHÚ BỔ SUNG CHO AI ---
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -139,7 +148,7 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
-            # --- CỤM NÚT THAO TÁC NẰM CHUNG HÀNG DƯỚI CÙNG ---
+            # --- HÀNG CÁC NÚT THAO TÁC CĂN ĐỀU BÊN DƯỚI ---
             act_col1, act_col2, act_col3 = st.columns([4, 3, 3])
             
             with act_col1:
@@ -147,7 +156,8 @@ class MathOCRApp:
                     "Tải file ảnh/PDF", 
                     type=["png", "jpg", "jpeg", "webp", "pdf"],
                     accept_multiple_files=True,
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key=f"file_uploader_{st.session_state['uploader_key']}"
                 )
             
             with act_col2:
@@ -156,8 +166,9 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # --- XỬ LÝ LỌC VÀ THÊM FILE MỚI ---
+            # --- XỬ LÝ TẢI FILE NÂNG CAO (CHỐNG NHÁY/LẶP VO HẠN) ---
             if uploaded_files:
+                has_new_file = False
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
                     mime_type = file.type
@@ -169,9 +180,14 @@ class MathOCRApp:
                             "mime": mime_type,
                             "preview": preview_img
                         })
-                st.rerun()
+                        has_new_file = True
 
-            # --- XỬ LÝ NÚT BẤM ---
+                # Chỉ làm mới key uploader và rerun khi thực sự nhận thêm file mới
+                if has_new_file:
+                    st.session_state["uploader_key"] += 1
+                    st.rerun()
+
+            # --- SỰ KIỆN NÚT BẤM ---
             if btn_clear_all:
                 st.session_state["input_images"] = []
                 st.rerun()
@@ -212,9 +228,9 @@ class MathOCRApp:
                             st.toast("Chuyển đổi hoàn tất!", icon="✅")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Lỗi: {e}", icon="❌")
+                            st.error(f"Lỗi hệ thống: {e}", icon="❌")
 
-        # ==================== CỘT 2 ====================
+        # ==================== CỘT 2: OUTPUT RESULT ====================
         with col2:
             UIComponent.render_output_section()
 
