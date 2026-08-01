@@ -18,15 +18,15 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
-        # 1. Kiểm tra đăng nhập
+        # 1. Khóa bảo vệ: Kiểm tra đăng nhập
         if not AuthSystem.check_auth():
-            st.stop()
+            st.stop()  # Dừng ứng dụng nếu chưa đăng nhập thành công
 
-        # 2. Khởi tạo session state cho API Key
+        # 2. Khởi tạo API Key từ session state hoặc query params
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
 
-        # 3. Sidebar - Thông tin tài khoản & Nút Đăng xuất gọn gàng
+        # 3. Hiển thị thông tin người dùng & Nút đăng xuất gọn gàng trên 1 hàng ở Sidebar
         with st.sidebar:
             col_usr, col_logout = st.columns([6, 4], vertical_alignment="center")
             with col_usr:
@@ -44,14 +44,16 @@ class MathOCRApp:
         
         api_key, mode, selected_model, add_solution = UIComponent.render_sidebar(api_service)
         
-        # Cập nhật API Key mới cho Service
         api_service.api_key = api_key
+        if api_key and not getattr(api_service, 'client', None):
+            api_service.client = GeminiAPIService(api_key).client
 
         col1, col2 = st.columns([5, 7], gap="large")
 
         with col1:
             st.markdown("### Dữ liệu bài toán")
             
+            # Sử dụng file_uploader chuẩn native
             uploaded_files = st.file_uploader(
                 "Tải ảnh hoặc dán (Ctrl+V) / kéo thả vào đây",
                 type=["png", "jpg", "jpeg", "webp", "pdf"],
@@ -72,6 +74,7 @@ class MathOCRApp:
                         "preview": preview_img
                     })
 
+            # Hiển thị preview rõ ràng từng ảnh
             if current_inputs:
                 st.markdown(f"**Đã chọn ({len(current_inputs)} tệp):**")
                 grid = st.columns(3)
