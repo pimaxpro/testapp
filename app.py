@@ -14,50 +14,112 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inject CSS tùy chỉnh để làm đẹp đồng bộ 2 nút Input & Bảng màu
-CUSTOM_UI_STYLING = CUSTOM_CSS + """
+# THIẾT KẾ ĐỒNG BỘ GIAO DIỆN MONOCHROME / SINGLE-TONE CHUYÊN NGHIỆP
+STUDIO_THEME_CSS = CUSTOM_CSS + """
 <style>
-    /* Đồng bộ tông màu chủ đạo */
+    /* 1. ĐỒNG BỘ BẢNG MÀU CHỦ ĐẠO (SINGLE TONE) */
     :root {
-        --primary-color: #4F46E5;
-        --primary-hover: #4338CA;
-        --bg-card: #1E1E2E;
+        --primary-color: #4F46E5 !important;
+        --primary-hover: #4338CA !important;
+        --accent-glow: rgba(79, 70, 229, 0.25) !important;
+        --bg-card: #181825 !important;
+        --border-color: #313244 !important;
+        --text-muted: #A6ADC8 !important;
+    }
+
+    /* TRIỆT TIÊU TOÀN BỘ MÀU ĐỎ / ĐỔI VIỀN MẶC ĐỊNH CỦA STREAMLIT */
+    div[data-baseweb="input"]:focus-within, 
+    div[data-baseweb="textarea"]:focus-within {
+        border-color: #4F46E5 !important;
+        box-shadow: 0 0 0 1px #4F46E5 !important;
     }
     
-    /* Cấu trúc Nút dán từ Clipboard */
+    /* 2. CHUẨN HÓA KÍCH THƯỚC & CĂN GIỮA ICON NÚT PASTE CLIPBOARD */
     div[data-testid="stCustomComponentV1"] iframe {
-        height: 52px !important;
+        height: 48px !important;
+        width: 100% !important;
     }
-    
-    /* Thiết kế Custom File Uploader dạng Nút bấm vuông vắn khớp với Paste Button */
+
+    /* 3. THIẾT KẾ NÚT FILE UPLOADER CÂN BẰNG 100% VỚI NÚT PASTE */
     div[data-testid="stFileUploader"] {
         padding: 0 !important;
+        margin: 0 !important;
     }
     div[data-testid="stFileUploader"] section {
-        padding: 6px 12px !important;
-        background-color: #262636 !important;
-        border: 1px dashed #4F46E5 !important;
+        padding: 0 16px !important;
+        background-color: #4F46E5 !important;
+        border: 1px solid #4F46E5 !important;
         border-radius: 8px !important;
-        height: 52px !important;
+        height: 48px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
     }
-    div[data-testid="stFileUploader"] section small {
-        display: none !important; /* Ẩn bớt text dung lượng thừa */
+    div[data-testid="stFileUploader"] section:hover {
+        background-color: #4338CA !important;
+        border-color: #4338CA !important;
+        box-shadow: 0 4px 12px var(--accent-glow) !important;
     }
-    
-    /* Bo góc và tùy chỉnh khung preview ảnh */
-    .media-card {
-        background-color: #181825;
-        border: 1px solid #313244;
-        border-radius: 8px;
-        padding: 8px;
-        text-align: center;
+    div[data-testid="stFileUploader"] section * {
+        color: #FFFFFF !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+    }
+    /* Hide non-essential drag & drop label to match button layout */
+    div[data-testid="stFileUploader"] section small,
+    div[data-testid="stFileUploader"] section span[data-testid="stIconMaterial"] {
+        display: none !important;
+    }
+    div[data-testid="stFileUploader"] section div {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+    div[data-testid="stFileUploader"] section div::before {
+        content: "📁";
+        font-size: 16px;
+    }
+
+    /* 4. ĐỒNG BỘ KHUNG THẺ PREVIEW VÀ TEXTAREA */
+    .stTextArea textarea {
+        background-color: var(--bg-card) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        color: #CDD6F4 !important;
+    }
+    .stTextArea textarea:focus {
+        border-color: #4F46E5 !important;
+        box-shadow: 0 0 0 1px #4F46E5 !important;
+    }
+
+    /* 5. CĂN CHỈNH NÚT THỰC THI (EQUAL HEIGHT & ALIGNMENT) */
+    .stButton button {
+        height: 44px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+    .stButton button[kind="primary"] {
+        background-color: #4F46E5 !important;
+        border: 1px solid #4F46E5 !important;
+    }
+    .stButton button[kind="primary"]:hover {
+        background-color: #4338CA !important;
+        box-shadow: 0 4px 12px var(--accent-glow) !important;
+    }
+    .stButton button[kind="secondary"] {
+        background-color: transparent !important;
+        border: 1px solid var(--border-color) !important;
+        color: #CDD6F4 !important;
+    }
+    .stButton button[kind="secondary"]:hover {
+        border-color: #4F46E5 !important;
+        color: #4F46E5 !important;
     }
 </style>
 """
-st.markdown(CUSTOM_UI_STYLING, unsafe_allow_html=True)
+st.markdown(STUDIO_THEME_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     """Controller chính điều phối toàn bộ ứng dụng"""
@@ -89,7 +151,7 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Dữ liệu đầu vào")
             
-            # --- KHU VỰC 2 NÚT SONG SONG CÙNG KÍCH THƯỚC ---
+            # 2 NÚT NGUỒN VÀO ĐẶT SONG SONG VỚI CÙNG TỶ LỆ KÍCH THƯỚC
             in_col1, in_col2 = st.columns(2, gap="small")
 
             with in_col1:
@@ -102,13 +164,13 @@ class MathOCRApp:
 
             with in_col2:
                 uploaded_files = st.file_uploader(
-                    "Tải tệp Ảnh / PDF", 
+                    "Tải tệp từ máy", 
                     type=["png", "jpg", "jpeg", "webp", "pdf"],
                     accept_multiple_files=True,
                     label_visibility="collapsed"
                 )
 
-            # Xử lý logic Clipboard
+            # Xử lý dán Clipboard
             if paste_result.image_data is not None:
                 image = paste_result.image_data
                 buf = io.BytesIO()
@@ -123,9 +185,9 @@ class MathOCRApp:
                         "mime": "image/png",
                         "preview": image
                     })
-                    st.toast("Đã dán ảnh thành công!", icon="📋")
+                    st.toast("Đã dán ảnh!", icon="📋")
 
-            # Xử lý logic File Uploader
+            # Xử lý chọn tệp từ máy
             if uploaded_files:
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
@@ -140,9 +202,10 @@ class MathOCRApp:
                             "preview": preview_img
                         })
 
-            # --- KHU VỰC PREVIEW TỆP ĐÃ TẢI LÊN ---
+            # KHU VỰC PREVIEW DANH SÁCH FILE ĐÃ NHẬN
             if st.session_state.get("input_images"):
-                st.caption(f"Đã chọn **{len(st.session_state['input_images'])}** tệp:")
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                st.caption(f"Đã tải lên **{len(st.session_state['input_images'])}** tệp:")
                 cols = st.columns(min(len(st.session_state["input_images"]), 4))
                 for idx, item in enumerate(st.session_state["input_images"]):
                     with cols[idx % 4]:
@@ -151,20 +214,24 @@ class MathOCRApp:
                         elif item.get("preview"):
                             st.image(item["preview"], use_container_width=True)
 
-            # --- KHU VỰC NHẬP PROMPT BỔ SUNG ---
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+            # PROMPT YÊU CẦU BỔ SUNG
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
             extra_prompt = st.text_area(
                 "💡 Yêu cầu bổ sung cho AI", 
                 value=st.session_state["extra_notes_val"],
-                height=100,
-                placeholder="Nhập ghi chú định dạng thêm nếu có..."
+                height=110,
+                placeholder="Ví dụ: Chỉ xuất mã TikZ, dùng gói ex_test..."
             )
             st.session_state["extra_notes_val"] = extra_prompt
 
-            # --- KHU VỰC THAO TÁC (TRÍCH XUẤT / XÓA) ---
-            btn_col1, btn_col2 = st.columns([2, 1], gap="small")
+            st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+
+            # NÚT THỰC THI CHÍNH VA NÚT XÓA
+            btn_col1, btn_col2 = st.columns([7, 3], gap="small")
             with btn_col1:
                 btn_process = st.button(
                     "🚀 Trích xuất & Chuyển đổi", 
@@ -173,12 +240,12 @@ class MathOCRApp:
                 )
             with btn_col2:
                 btn_clear = st.button(
-                    "🗑️ Xóa tất cả", 
+                    "🗑️ Xóa hết", 
                     type="secondary", 
                     use_container_width=True
                 )
 
-            # SỰ KIỆN NÚT BẤM
+            # SỰ KIỆN XỬ LÝ
             if btn_clear:
                 st.session_state["input_images"] = []
                 if "last_pasted" in st.session_state:
@@ -189,9 +256,9 @@ class MathOCRApp:
                 if not api_key:
                     st.error("Vui lòng nhập API Key ở thanh bên trái!", icon="🔑")
                 elif not st.session_state.get("input_images"):
-                    st.error("Chưa có ảnh/PDF nào được chọn!", icon="🖼️")
+                    st.error("Chưa chọn ảnh/PDF nào!", icon="🖼️")
                 else:
-                    with st.spinner("Đang xử lý toán học..."):
+                    with st.spinner("Đang xử lý mã toán..."):
                         try:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             input_list = st.session_state["input_images"]
@@ -212,12 +279,12 @@ class MathOCRApp:
                                 )
 
                             st.session_state["result"] = result_code
-                            st.toast("Trích xuất hoàn tất!", icon="✅")
+                            st.toast("Trích xuất thành công!", icon="✅")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Lỗi hệ thống: {e}", icon="❌")
+                            st.error(f"Lỗi xử lý: {e}", icon="❌")
 
-        # CỘT 2: OUTPUT LATEX CODE
+        # CỘT 2: OUTPUT LATEX CODE NGUYÊN BẢN
         with col2:
             UIComponent.render_output_section()
 
