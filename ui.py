@@ -3,6 +3,43 @@ import streamlit as st
 from gemini_service import GeminiAPIService
 from config import DEFAULT_EXTRA_PROMPT
 
+class AuthSystem:
+    # Danh sách tài khoản được phép đăng nhập (Thầy có thể thêm/sửa tùy ý)
+    USERS = {
+        "admin": "123456",
+        "thayduong": "math2026",
+        "teacher": "latex123"
+    }
+
+    @classmethod
+    def check_auth(cls):
+        """Kiểm tra xem người dùng đã đăng nhập chưa, nếu chưa sẽ hiện màn hình Form Đăng nhập"""
+        if "authenticated" not in st.session_state:
+            st.session_state["authenticated"] = False
+
+        if not st.session_state["authenticated"]:
+            st.markdown("<h2 style='text-align: center; margin-top: 2rem;'>🔒 Đăng nhập hệ thống Math OCR Studio</h2>", unsafe_allow_html=True)
+            st.write("")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                with st.form("login_form"):
+                    username = st.text_input("Tên đăng nhập")
+                    password = st.text_input("Mật khẩu", type="password")
+                    btn_login = st.form_submit_button("Đăng nhập 🚀", use_container_width=True)
+
+                    if btn_login:
+                        if username in cls.USERS and cls.USERS[username] == password:
+                            st.session_state["authenticated"] = True
+                            st.session_state["user_display"] = username
+                            st.toast(f"Xin chào {username}!", icon="👋")
+                            st.rerun()
+                        else:
+                            st.error("Tên đăng nhập hoặc mật khẩu không chính xác!")
+            return False
+        return True
+
+
 class UIComponent:
     @staticmethod
     def render_header():
