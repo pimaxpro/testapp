@@ -21,15 +21,13 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def run(self):
-        # Khởi tạo Session State chuẩn
+        # Khởi tạo Session State
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
         if "uploader_key" not in st.session_state:
             st.session_state["uploader_key"] = 0
-        if "last_pasted_raw" not in st.session_state:
-            st.session_state["last_pasted_raw"] = None
 
         UIComponent.render_header()
         
@@ -48,115 +46,116 @@ class MathOCRApp:
         with col1:
             st.markdown("### 📥 Dữ liệu đầu vào & Yêu cầu")
 
-            # --- KHU VỰC DÁN CLIPBOARD CÓ PREVIEW TỨC THÌ & HỖ TRỢ DÁN NHIỀU ẢNH ---
-            st.caption("📋 **Dán ảnh từ Clipboard:** Click vào ô bên dưới rồi bấm `Ctrl + V` (có thể dán liên tiếp nhiều ảnh):")
+            # 1. KHU VỰC DÁN CLIPBOARD (Sử dụng Javascript Event listener đồng bộ)
+            st.caption("📋 **Dán ảnh từ Clipboard:** Click chọn ô bên dưới rồi bấm `Ctrl + V`")
             
-            # Component JS tự chứa xem trước (Preview) & gửi dữ liệu lên Streamlit
-            paste_component = components.html(
-                """
-                <div id="drop-zone" style="
-                    border: 2px dashed #4F46E5;
-                    border-radius: 8px;
-                    padding: 12px;
-                    text-align: center;
-                    background-color: #F5F3FF;
-                    color: #4338CA;
-                    font-family: sans-serif;
-                    font-size: 13px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    outline: none;
-                " tabindex="0">
-                    📌 Nhấp vào đây & bấm <b>Ctrl + V</b> để dán ảnh
-                </div>
+            # Khung Paste sử dụng JavaScript truyền dữ liệu liên tục không bị mất state
+            paste_html = """
+            <div id="paste-box" contenteditable="true" style="
+                border: 2px dashed #4F46E5;
+                border-radius: 8px;
+                padding: 15px;
+                text-align: center;
+                background-color: #F5F3FF;
+                color: #4338CA;
+                font-family: sans-serif;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                outline: none;
+                min-height: 50px;
+            ">
+                📌 Click chọn ô này và bấm <b>Ctrl + V</b> để dán ảnh
+            </div>
 
-                <script>
-                const zone = document.getElementById('drop-zone');
-
-                zone.addEventListener('paste', (e) => {
-                    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-                    for (let item of items) {
-                        if (item.type.indexOf('image') !== -1) {
-                            const blob = item.getAsFile();
-                            const reader = new FileReader();
-                            reader.onload = function(event) {
-                                const b64 = event.target.result;
-                                // Gửi về Streamlit
-                                window.parent.postMessage({
-                                    type: 'streamlit:setComponentValue',
-                                    value: b64 + '||' + Date.now()
-                                }, '*');
-                            };
-                            reader.readAsDataURL(blob);
-                            
-                            zone.style.borderColor = '#10B981';
-                            zone.style.backgroundColor = '#ECFDF5';
-                            zone.style.color = '#047857';
-                            zone.innerHTML = '✅ Đã nhận ảnh! Bấm Ctrl+V để dán tiếp...';
-                            
-                            setTimeout(() => {
-                                zone.style.borderColor = '#4F46E5';
-                                zone.style.backgroundColor = '#F5F3FF';
-                                zone.style.color = '#4338CA';
-                                zone.innerHTML = '📌 Nhấp vào đây & bấm <b>Ctrl + V</b> để dán ảnh';
-                            }, 1200);
-                            break;
-                        }
+            <script>
+            const box = document.getElementById('paste-box');
+            box.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (let item of items) {
+                    if (item.type.indexOf('image') !== -1) {
+                        const blob = item.getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const b64 = event.target.result;
+                            window.parent.postMessage({
+                                type: 'streamlit:setComponentValue',
+                                value: b64
+                            }, '*');
+                        };
+                        reader.readAsDataURL(blob);
+                        
+                        box.style.borderColor = '#10B981';
+                        box.style.backgroundColor = '#ECFDF5';
+                        box.style.color = '#047857';
+                        box.innerHTML = '✅ Đã nhận ảnh! Thầy có thể dán tiếp ảnh khác...';
+                        setTimeout(() => {
+                            box.style.borderColor = '#4F46E5';
+                            box.style.backgroundColor = '#F5F3FF';
+                            box.style.color = '#4338CA';
+                            box.innerHTML = '📌 Click chọn ô này và bấm <b>Ctrl + V</b> để dán ảnh';
+                        }, 1500);
+                        break;
                     }
-                });
-                </script>
-                """,
-                height=65
-            )
+                }
+            });
+            </script>
+            """
+            
+            pasted_b64 = components.html(paste_html, height=70)
 
-            # Xử lý bẫy lưu ảnh dán vào State
-            if paste_component and isinstance(paste_component, str) and "||" in paste_component:
-                if paste_component != st.session_state["last_pasted_raw"]:
-                    st.session_state["last_pasted_raw"] = paste_component
-                    raw_b64, _ = paste_component.split("||", 1)
+            # Xử lý NẠP VÀO SESSION STATE ngay khi phát hiện Base64 mới
+            if pasted_b64 and isinstance(pasted_b64, str) and pasted_b64.startswith("data:image"):
+                try:
+                    _, encoded = pasted_b64.split(",", 1)
+                    file_bytes = base64.b64decode(encoded)
                     
-                    if raw_b64.startswith("data:image"):
-                        try:
-                            _, encoded = raw_b64.split(",", 1)
-                            file_bytes = base64.b64decode(encoded)
-                            preview_img = Image.open(io.BytesIO(file_bytes))
-                            
-                            img_count = len(st.session_state["input_images"]) + 1
-                            st.session_state["input_images"].append({
-                                "name": f"clipboard_img_{img_count}.png",
-                                "bytes": file_bytes,
-                                "mime": "image/png",
-                                "preview": preview_img
-                            })
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Lỗi đọc ảnh: {e}")
+                    # Kiểm tra trùng lặp với ảnh cuối cùng
+                    is_duplicate = False
+                    if st.session_state["input_images"]:
+                        last_bytes = st.session_state["input_images"][-1].get("bytes")
+                        if last_bytes == file_bytes:
+                            is_duplicate = True
 
-            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                    if not is_duplicate:
+                        preview_img = Image.open(io.BytesIO(file_bytes))
+                        img_idx = len(st.session_state["input_images"]) + 1
+                        st.session_state["input_images"].append({
+                            "name": f"clipboard_{img_idx}.png",
+                            "bytes": file_bytes,
+                            "mime": "image/png",
+                            "preview": preview_img
+                        })
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Lỗi đọc ảnh từ clipboard: {e}")
 
-            # --- KHU VỰC HIỂN THỊ PREVIEW TOÀN BỘ CÁC ẢNH ĐÃ DÁN / UPLOAD ---
+            st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+
+            # 2. KHU VỰC HIỂN THỊ PREVIEW CÁC ẢNH ĐÃ DÁN / UPLOAD (BẮT BUỘC HIỂN THỊ)
             if st.session_state["input_images"]:
-                st.write(f"📷 **Danh sách ảnh đã dán ({len(st.session_state['input_images'])} ảnh):**")
+                st.markdown(f"🖼️ **Ảnh đã dán/tải lên ({len(st.session_state['input_images'])}):**")
                 
-                # Tạo lưới xem trước hình ảnh
-                grid_cols = st.columns(min(len(st.session_state["input_images"]), 4))
+                # Hiển thị dạng lưới (Grid) 3 cột
+                grid = st.columns(3)
                 for idx, item in enumerate(list(st.session_state["input_images"])):
-                    with grid_cols[idx % 4]:
+                    with grid[idx % 3]:
                         with st.container(border=True):
                             if item.get("preview"):
                                 st.image(item["preview"], caption=item["name"], use_container_width=True)
                             elif item["mime"] == "application/pdf":
-                                st.write(f"📄 `{item['name'][:10]}`")
+                                st.write(f"📄 `{item['name']}`")
                             
-                            if st.button("✖ Xóa", key=f"del_img_{idx}", use_container_width=True):
+                            if st.button("🗑️ Xóa", key=f"del_btn_{idx}", use_container_width=True):
                                 st.session_state["input_images"].pop(idx)
                                 st.rerun()
             else:
-                st.info("Chưa có ảnh nào được dán hoặc tải lên.", icon="ℹ️")
+                st.warning("⚠️ Chưa có ảnh nào trong danh sách. Hãy nhấn Ctrl+V ở ô trên hoặc bấm Upload.", icon="ℹ️")
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # Editor yêu cầu bổ sung
+            # 3. EDITOR YÊU CẦU BỔ SUNG
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -171,7 +170,7 @@ class MathOCRApp:
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-            # Hàng nút thao tác
+            # 4. HÀNG NÚT THAO TÁC
             act_col1, act_col2, act_col3 = st.columns([5, 3.5, 3.5])
             
             with act_col1:
@@ -189,7 +188,7 @@ class MathOCRApp:
             with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
 
-            # Xử lý file Upload thêm
+            # Xử lý Upload file từ máy
             if uploaded_files:
                 has_new = False
                 for file in uploaded_files:
@@ -208,12 +207,12 @@ class MathOCRApp:
                     st.session_state["uploader_key"] += 1
                     st.rerun()
 
+            # Nút Xóa tất cả
             if btn_clear_all:
                 st.session_state["input_images"] = []
-                st.session_state["last_pasted_raw"] = None
                 st.rerun()
 
-            # Sự kiện Convert
+            # Nút Convert
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
