@@ -43,15 +43,15 @@ class AuthSystem:
 class UIComponent:
     # --- KHU VỰC LƯU TRỮ API KEY DÙNG CHUNG (THẦY CẬP NHẬT TẠI ĐÂY) ---
     SYSTEM_API_KEYS = {
-        "Key Hệ Thống 1 (Chính)": "AIzaSy...DienKey1VaoDay...",
-        "Key Hệ Thống 2 (Dự phòng 1)": "AIzaSy...DienKey2VaoDay...",
-        "Key Hệ Thống 3 (Dự phòng 2)": "AIzaSy...DienKey3VaoDay..."
+        "Key Hệ Thống 1 (Chính)": "AQ.Ab8RN6LCTf6mo4nUUrCqAqlDYI8B6oFAGQGu7YzIjGcDiRBKeA",
+        "Key Hệ Thống 2 (Dự phòng 1)": "AQ.Ab8RN6L3v5pf216_mHlBksO3Py44wnlxmicDCzTS99Th-pao1w",
+        "Key Hệ Thống 3 (Dự phòng 2)": "AQ.Ab8RN6K1eOQa7aiXkYNdPtpKcnDSXLw7zTK7SrUvw01Cdf1-gw"
     }
 
     @staticmethod
     def render_header():
         st.markdown("<h1 class='header-title'>Math OCR Pro Studio</h1>", unsafe_allow_html=True)
-        st.markdown("Hệ thống chuyển đổi **Ảnh / PDF / Clipboard** thành mã **ex_test**, **TikZ**, và **Tự động soạn Lời giải**.")
+        st.markdown("Tổ toán cấp 3 Minh Hoàng")
         st.write("")
 
     @staticmethod
