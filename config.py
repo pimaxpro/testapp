@@ -1,3 +1,4 @@
+# config.py
 import streamlit as st
 
 CUSTOM_CSS = """
@@ -17,24 +18,39 @@ CUSTOM_CSS = """
         -webkit-text-fill-color: transparent;
     }
 
-    /* MỞ KHÓA BOX st.code NGUYÊN BẢN ĐỂ CHỈNH SỬA TRỰC TIẾP */
-    div[data-testid="stCodeBlock"] code {
-        outline: none !important;
-        cursor: text !important;
+    /* ĐỊNH DẠNG TEXTAREA GIỐNG HỆT ST.CODE ĐẸP MẮT + TỰ ĐỘNG XUỐNG DÒNG */
+    div[data-baseweb="textarea"] {
+        background-color: #0e1117 !important;
+        border: 1px solid #262730 !important;
+        border-radius: 8px !important;
     }
-    
-    /* Hiệu ứng đường viền khi click vào sửa trên st.code */
-    div[data-testid="stCodeBlock"]:focus-within {
-        border: 1px solid #6366f1 !important;
-        box-shadow: 0 0 8px rgba(99, 102, 241, 0.4) !important;
-        border-radius: 8px;
+
+    div[data-baseweb="textarea"] textarea {
+        font-family: 'Source Code Pro', 'Consolas', 'Courier New', monospace !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        color: #00f2fe !important; /* Màu chữ code nổi bật */
+        background-color: #0e1117 !important;
+        padding: 14px !important;
+        caret-color: #ffffff !important;
+        
+        /* TỰ ĐỘNG XUỐNG DÒNG KHI DÀI (KHÔNG KÉO NGANG) */
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Đường viền đổi màu mượt mà khi click sửa */
+    div[data-baseweb="textarea"] textarea:focus {
+        border-color: #4F46E5 !important;
+        box-shadow: 0 0 8px rgba(79, 70, 229, 0.4) !important;
     }
 
     footer {visibility: hidden;}
     </style>
 """
 
-# Định dạng mặc định bổ sung cho AI (đã khắc phục lỗi ImportError)
+# Định dạng mặc định bổ sung cho AI
 DEFAULT_EXTRA_PROMPT = """- Đánh số câu bắt đầu từ Câu 1.
 - Không tự ý thay đổi nội dung toán học hay các công thức.
 - Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX."""
@@ -43,7 +59,7 @@ DEFAULT_EXTRA_PROMPT = """- Đánh số câu bắt đầu từ Câu 1.
 NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
 DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
 
-# System Instructions cho các chế độ (sử dụng Raw String r"""...""" để tránh lỗi escape sequence)
+# System Instructions cho các chế độ
 PROMPTS = {
     "EX_TEST": r"""
 Bạn là một chuyên gia soạn thảo đề thi LaTeX bằng gói `ex_test`.
