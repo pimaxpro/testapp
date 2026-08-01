@@ -23,7 +23,7 @@ CUSTOM_CSS = """
 """
 
 # Định dạng mặc định bổ sung cho AI
-DEFAULT_EXTRA_PROMPT = """- Đánh số câu bắt đầu từ Câu 1.
+DEFAULT_EXTRA_PROMPT = """- Tái tạo chính xác từng dòng, đoạn văn và thứ tự trong file gốc.
 - Không tự ý thay đổi nội dung toán học hay các công thức.
 - Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX."""
 
@@ -31,28 +31,37 @@ DEFAULT_EXTRA_PROMPT = """- Đánh số câu bắt đầu từ Câu 1.
 NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
 DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
 
-# Prompt bổ sung cho cấu trúc file LaTeX tiêu chuẩn HOÀN CHỈNH
+# Prompt bổ sung cho cấu trúc file LaTeX chuẩn HOÀN CHỈNH & GIỐNG TRỰC TIỆP FILE GỐC
 STANDARD_LATEX_PROMPT = r"""
-Bạn là một chuyên gia biên soạn tài liệu LaTeX toán học chuyên nghiệp.
-Nhiệm vụ: Chuyển đổi toàn bộ nội dung/hình ảnh thành MÃ LATEX HOÀN CHỈNH (có thể biên dịch trực tiếp).
+Bạn là một chuyên gia biên biên tập tài liệu LaTeX chuyên nghiệp.
+Nhiệm vụ: Chuyển đổi toàn bộ tài liệu/ảnh thành MÃ LATEX HOÀN CHỈNH và TÁI TẠO GIỐNG Y HỆT FILE GỐC NHẤT CÓ THỂ.
 
-QUY TẮC BẮT BUỘC VỀ CẤU TRÚC:
-1. Luôn luôn xuất đầy đủ khai báo Preamble và môi trường Document theo mẫu sau:
+NGUYÊN TẮC TÁI TẠO NỘI DUNG VÀ TRÌNH BÀY (BẮT BUỘC):
+1. GIỮ NGUYÊN BỐ CỤC VÀ CẤU TRÚC:
+   - Giữ nguyên thứ tự dòng, tiêu đề, đoạn văn, danh sách (enumerate/itemize), bảng biểu, và định dạng văn bản (in đậm \textbf, in nghiêng \textit, gạch chân).
+   - Nếu file gốc có bảng biểu (tables/tabular), hãy tạo lại bảng bằng môi trường \begin{table} hoặc \begin{tabular} với cấu trúc hàng/cột chính xác như gốc.
+   - Nếu có công thức nằm riêng trên một dòng, hãy dùng môi trường equation hoặc $$...$$. Nếu công thức nằm trong dòng văn bản, hãy dùng $...$.
+
+2. CẤU TRÚC FILE CHUẨN ĐẦY ĐỦ:
+   - BẮT BUỘC xuất đầy đủ khai báo Preamble và môi trường Document để có thể biên dịch trực tiếp:
 
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{vietnam}
 \usepackage{amsmath,amssymb,amsfonts,mathrsfs}
 \usepackage{graphicx,tikz,tkz-tab,tkz-euclide}
+\usepackage{array,multirow,multicol,booktabs}
 \usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
 
 \begin{document}
 
-[Nội dung bài toán / tài liệu]
+[Nội dung tái tạo chính xác từ tài liệu gốc]
 
 \end{document}
 
-2. Sử dụng công thức $...$ cho inline math và $$...$$ hoặc các môi trường equation cho display math.
-3. Chỉ trả về duy nhất mã LaTeX trong khối ```latex ... ```, không kèm lời giải thích hay lời dẫn ngoài mã.
+3. TÍNH CHÍNH XÁC CAO:
+   - Không bỏ sót bất kỳ từ, công thức hay ký hiệu nào.
+   - Không tự ý giải thích, thêm bớt nội dung hay thay đổi phong cách trình bày.
+   - Chỉ trả về duy nhất mã LaTeX nằm trong khối ```latex ... ```.
 """
 
 # Quy tắc dùng chung cho TikZ / Vẽ hình
