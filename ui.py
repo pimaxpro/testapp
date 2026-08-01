@@ -40,20 +40,34 @@ class UIComponent:
 
             st.markdown("---")
 
+            # Danh sách đúng 3 chức năng thầy yêu cầu
             mode = st.selectbox(
                 "Chọn Chức năng Processing",
-                options=["ex_test", "ex_test_solve", "tikz"],
+                options=["latex", "ex_test", "tikz"],
                 format_func=lambda x: {
-                    "ex_test": "📄 OCR sang gói ex_test (Đề thi)",
-                    "ex_test_solve": "🧠 ex_test + Tự soạn Lời giải",
-                    "tikz": "🎨 Chuyển Hình vẽ -> Mã TikZ"
+                    "latex": "📄 1. Chuyển file sang Latex",
+                    "ex_test": "📝 2. Chuyển bài toán sang ex_test",
+                    "tikz": "🎨 3. Chuyển ảnh sang tikz"
                 }[x]
             )
+
+            # 2 tùy chọn riêng cho ex_test ngay bên dưới selectbox ở sidebar
+            add_solution = False
+            if mode == "ex_test":
+                solution_option = st.radio(
+                    "Tùy chọn lời giải:",
+                    options=["Giữ nguyên gốc", "Thêm lời giải (Tự động giải)"],
+                    index=0,
+                    help="Chọn tự động giải chi tiết hoặc giữ nguyên khung lời giải như đề gốc."
+                )
+                add_solution = (solution_option == "Thêm lời giải (Tự động giải)")
+
+            st.markdown("---")
 
             available_models = api_service.get_available_models() if api_key_input else ["Vui lòng nhập API Key"]
             model_choice = st.selectbox("Mô hình Gemini Vision", available_models, index=0)
 
-            return api_key_input, mode, model_choice
+            return api_key_input, mode, model_choice, add_solution
 
     @staticmethod
     def render_input_section():
