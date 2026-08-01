@@ -33,20 +33,29 @@ Quy tắc bắt buộc:
 """
 
 def get_available_models(api_key: str):
-    """Lấy danh sách các model thực tế hỗ trợ generateContent từ API Key của bạn"""
+    """Lấy danh sách các model khả dụng và thực sự hỗ trợ generateContent từ API Key"""
     try:
         client = genai.Client(api_key=api_key)
-        models_list = []
+        valid_models = []
+        
         for m in client.models.list():
             name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
-            if "gemini" in name.lower():
-                models_list.append(name)
-        return models_list if models_list else ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
-    except Exception:
-        return ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+            # Kiểm tra nếu model hỗ trợ generateContent
+            methods = getattr(m, 'supported_generation_methods', [])
+            if "generateContent" in methods or not methods:
+                if "gemini" in name.lower() and "embed" not in name.lower():
+                    valid_models.append(name)
+                    
+        # Loại bỏ bản lite nếu có để ưu tiên bản chính ổn định hơn
+        valid_models.sort(key=lambda x: ("lite" in x, "flash" not in x))
+        
+        return valid_models if valid_models else ["gemini-2.0-flash", "gemini-2.5-flash"]
+    except Exception as e:
+        # Danh sách dự phòng các tên mô hình chuẩn của SDK mới nhất
+        return ["gemini-2.0-flash", "gemini-2.5-flash"]
 
-def convert_image(image_bytes: bytes, mime_type: str, api_key: str, model_name: str, extra_prompt: str) -> str:
-    """Gọi Gemini API xử lý ảnh với cơ chế fallback tự động nếu dính lỗi 429 Quota"""
+def convert_image(image_bytes: bytes, mime_type: str, api_key: str, selected_model: str, extra_prompt: str) -> str:
+    """Gọi Gemini API xử lý ảnh với cơ chế fallback linh hoạt và retry khi dính 429"""
     client = genai.Client(api_key=api_key)
     prompt = "Hãy nhận diện và chuyển đổi chính xác toàn bộ biểu thức/nội dung toán học trong ảnh này thành mã LaTeX chuẩn."
     
@@ -54,9 +63,9 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, model_name: 
     if extra_prompt.strip():
         sys_prompt += f"\nYêu cầu bổ sung từ người dùng: {extra_prompt.strip()}"
 
-    # Danh sách ưu tiên chuyển đổi nếu mô hình được chọn chạm trần Rate Limit (429)
-    fallback_models = [model_name, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
-    fallback_models = list(dict.fromkeys(fallback_models)) # Bỏ trùng lặp
+    # Lấy danh sách các model thực tế từ API để làm fallback, đưa selected_model lên đầu
+    available_list = get_available_models(api_key)
+    fallback_models = [selected_model] + [m for m in available_list if m != selected_model]
 
     last_exception = None
 
@@ -76,12 +85,18 @@ def convert_image(image_bytes: bytes, mime_type: str, api_key: str, model_name: 
             return response.text
         except Exception as e:
             last_exception = e
-            # Nếu dính lỗi 429 (Resource Exhausted), tạm nghỉ 2s rồi thử model tiếp theo
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                time.sleep(2)
+            err_str = str(e)
+            
+            # Bỏ qua model 404 không tồn tại để thử model tiếp theo trong danh sách
+            if "404" in err_str or "NOT_FOUND" in err_str:
                 continue
-            else:
-                raise e
+                
+            # Nếu dính 429 Quota/Rate limit, chờ 3 giây rồi thử model kế tiếp
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                time.sleep(3)
+                continue
+                
+            raise e
 
     raise last_exception
 
@@ -92,7 +107,6 @@ with st.sidebar:
     st.title("⚙️ Cấu hình App")
     api_key = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy...")
     
-    # Tự động quét Model khả dụng
     available_models = []
     if api_key:
         available_models = get_available_models(api_key)
@@ -103,7 +117,7 @@ with st.sidebar:
         "Mô hình Gemini khả dụng", 
         available_models,
         index=0,
-        help="Danh sách mô hình được truy vấn trực tiếp từ tài khoản Google AI của bạn."
+        help="Danh sách mô hình được quét trực tiếp từ API Key của bạn."
     )
     
     extra_notes = st.text_area(
