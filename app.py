@@ -18,18 +18,21 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 class MathOCRApp:
     """Controller chính điều phối toàn bộ ứng dụng"""
     def __init__(self):
+        pass
+
+    def run(self):
+        # 0. KHỞI TẠO SESSION STATE AN TOÀN (Ngay đầu hàm run)
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
 
-    def run(self):
         UIComponent.render_header()
         
         current_key = st.session_state.get("api_key", "")
         api_service = GeminiAPIService(api_key=current_key)
         
-        # 1. SIDEBAR (Chỉ nhận 3 giá trị, không lấy extra_prompt từ sidebar nữa)
+        # 1. SIDEBAR (Chỉ nhận 3 giá trị)
         api_key, mode, selected_model = UIComponent.render_sidebar(api_service)
         
         api_service.api_key = api_key
@@ -63,13 +66,14 @@ class MathOCRApp:
                 image = paste_result.image_data
                 buf = io.BytesIO()
                 image.save(buf, format="PNG")
+                img_bytes = buf.getvalue()
                 
-                # Kiểm tra tránh trùng lặp ảnh clipboard vừa dán
-                if "last_pasted" not in st.session_state or st.session_state["last_pasted"] != buf.getvalue():
-                    st.session_state["last_pasted"] = buf.getvalue()
+                # Tránh thêm lặp lại cùng một ảnh clipboard
+                if "last_pasted" not in st.session_state or st.session_state["last_pasted"] != img_bytes:
+                    st.session_state["last_pasted"] = img_bytes
                     st.session_state["input_images"].append({
                         "name": f"Clipboard_Image_{len(st.session_state['input_images']) + 1}.png",
-                        "bytes": buf.getvalue(),
+                        "bytes": img_bytes,
                         "mime": "image/png",
                         "preview": image
                     })
@@ -82,7 +86,7 @@ class MathOCRApp:
                     mime_type = file.type
                     
                     # Tránh thêm lặp lại file cùng tên
-                    if not any(item["name"] == file.name for item in st.session_state["input_images"]):
+                    if not any(item.get("name") == file.name for item in st.session_state["input_images"]):
                         preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
                         st.session_state["input_images"].append({
                             "name": file.name,
@@ -92,19 +96,19 @@ class MathOCRApp:
                         })
 
             # Hiển thị box danh sách các file/ảnh đã nhận
-            if st.session_state["input_images"]:
+            if st.session_state.get("input_images"):
                 st.caption(f"📸 Đã nhận **{len(st.session_state['input_images'])}** tệp đầu vào:")
                 cols = st.columns(min(len(st.session_state["input_images"]), 4))
                 for idx, item in enumerate(st.session_state["input_images"]):
                     with cols[idx % 4]:
                         if item["mime"] == "application/pdf":
                             st.info(f"📄 {item['name']}")
-                        elif item["preview"]:
+                        elif item.get("preview"):
                             st.image(item["preview"], use_container_width=True, caption=f"Ảnh {idx + 1}")
 
             st.markdown("---")
 
-            # BOX YÊU CẦU BỔ SUNG CHO CON AI (Đã chuyển về bên dưới khu vực input)
+            # BOX YÊU CẦU BỔ SUNG CHO CON AI
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -144,24 +148,33 @@ class MathOCRApp:
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập Gemini API Key ở Sidebar!", icon=":material/warning:")
-                elif not st.session_state["input_images"]:
+                elif not st.session_state.get("input_images"):
                     st.error("Vui lòng dán hoặc tải lên ít nhất 1 ảnh/PDF!", icon=":material/image:")
                 else:
                     with st.spinner("Đang phân tích và xử lý cấu trúc toán..."):
                         try:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             
-                            # Chuẩn bị danh sách dữ liệu gửi qua processor
-                            input_data_list = [
-                                {"bytes": item["bytes"], "mime": item["mime"]} 
-                                for item in st.session_state["input_images"]
-                            ]
+                            # Tương thích cả trường hợp xử lý 1 file hoặc danh sách file
+                            input_list = st.session_state["input_images"]
+                            
+                            try:
+                                # Thử gọi với kiểu danh sách batch
+                                result_code = processor.process(
+                                    input_data=input_list,
+                                    model=selected_model,
+                                    extra_prompt=extra_prompt
+                                )
+                            except TypeError:
+                                # Trở về fallback gọi với file đầu tiên nếu Processor cũ chưa hỗ trợ batch list
+                                first_item = input_list[0]
+                                result_code = processor.process(
+                                    file_bytes=first_item["bytes"],
+                                    mime_type=first_item["mime"],
+                                    model=selected_model,
+                                    extra_prompt=extra_prompt
+                                )
 
-                            result_code = processor.process(
-                                input_data=input_data_list,
-                                model=selected_model,
-                                extra_prompt=extra_prompt
-                            )
                             st.session_state["result"] = result_code
                             st.toast("Xử lý thành công!", icon="✅")
                             st.rerun()
