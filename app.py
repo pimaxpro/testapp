@@ -13,7 +13,51 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+# Inject CSS tùy chỉnh để làm đẹp đồng bộ 2 nút Input & Bảng màu
+CUSTOM_UI_STYLING = CUSTOM_CSS + """
+<style>
+    /* Đồng bộ tông màu chủ đạo */
+    :root {
+        --primary-color: #4F46E5;
+        --primary-hover: #4338CA;
+        --bg-card: #1E1E2E;
+    }
+    
+    /* Cấu trúc Nút dán từ Clipboard */
+    div[data-testid="stCustomComponentV1"] iframe {
+        height: 52px !important;
+    }
+    
+    /* Thiết kế Custom File Uploader dạng Nút bấm vuông vắn khớp với Paste Button */
+    div[data-testid="stFileUploader"] {
+        padding: 0 !important;
+    }
+    div[data-testid="stFileUploader"] section {
+        padding: 6px 12px !important;
+        background-color: #262636 !important;
+        border: 1px dashed #4F46E5 !important;
+        border-radius: 8px !important;
+        height: 52px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    div[data-testid="stFileUploader"] section small {
+        display: none !important; /* Ẩn bớt text dung lượng thừa */
+    }
+    
+    /* Bo góc và tùy chỉnh khung preview ảnh */
+    .media-card {
+        background-color: #181825;
+        border: 1px solid #313244;
+        border-radius: 8px;
+        padding: 8px;
+        text-align: center;
+    }
+</style>
+"""
+st.markdown(CUSTOM_UI_STYLING, unsafe_allow_html=True)
 
 class MathOCRApp:
     """Controller chính điều phối toàn bộ ứng dụng"""
@@ -21,7 +65,7 @@ class MathOCRApp:
         pass
 
     def run(self):
-        # KHỞI TẠO SESSION STATE AN TOÀN
+        # KHỞI TẠO SESSION STATE
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
@@ -41,30 +85,30 @@ class MathOCRApp:
 
         col1, col2 = st.columns([5, 7], gap="large")
 
-        # CỘT 1: INPUT FILE / CLIPBOARD
+        # CỘT 1: INPUT COMPONENT
         with col1:
-            st.markdown("### 1. Dữ liệu đầu vào")
+            st.markdown("### 📥 Dữ liệu đầu vào")
             
-            # --- ĐẶT 2 NÚT NẮM CÙNG 1 HÀNG ---
-            in_col1, in_col2 = st.columns(2)
+            # --- KHU VỰC 2 NÚT SONG SONG CÙNG KÍCH THƯỚC ---
+            in_col1, in_col2 = st.columns(2, gap="small")
 
             with in_col1:
                 paste_result = paste_image_button(
                     label="📋 Dán từ Clipboard",
                     background_color="#4F46E5",
                     text_color="#FFFFFF",
-                    hover_background_color="#3B82F6",
+                    hover_background_color="#4338CA",
                 )
 
             with in_col2:
                 uploaded_files = st.file_uploader(
-                    "Chọn file Ảnh / PDF", 
+                    "Tải tệp Ảnh / PDF", 
                     type=["png", "jpg", "jpeg", "webp", "pdf"],
                     accept_multiple_files=True,
-                    label_visibility="collapsed"  # Ẩn bớt nhãn thừa để 2 nút cân bằng hơn
+                    label_visibility="collapsed"
                 )
 
-            # Xử lý khi dán ảnh từ Clipboard
+            # Xử lý logic Clipboard
             if paste_result.image_data is not None:
                 image = paste_result.image_data
                 buf = io.BytesIO()
@@ -74,14 +118,14 @@ class MathOCRApp:
                 if "last_pasted" not in st.session_state or st.session_state["last_pasted"] != img_bytes:
                     st.session_state["last_pasted"] = img_bytes
                     st.session_state["input_images"].append({
-                        "name": f"Clipboard_Image_{len(st.session_state['input_images']) + 1}.png",
+                        "name": f"Clipboard_{len(st.session_state['input_images']) + 1}.png",
                         "bytes": img_bytes,
                         "mime": "image/png",
                         "preview": image
                     })
-                    st.toast("Đã thêm ảnh từ Clipboard!", icon="📋")
+                    st.toast("Đã dán ảnh thành công!", icon="📋")
 
-            # Xử lý các file từ file_uploader
+            # Xử lý logic File Uploader
             if uploaded_files:
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
@@ -96,35 +140,31 @@ class MathOCRApp:
                             "preview": preview_img
                         })
 
-            # Hiển thị box danh sách các file/ảnh đã nhận
+            # --- KHU VỰC PREVIEW TỆP ĐÃ TẢI LÊN ---
             if st.session_state.get("input_images"):
-                st.caption(f"📸 Đã nhận **{len(st.session_state['input_images'])}** tệp đầu vào:")
+                st.caption(f"Đã chọn **{len(st.session_state['input_images'])}** tệp:")
                 cols = st.columns(min(len(st.session_state["input_images"]), 4))
                 for idx, item in enumerate(st.session_state["input_images"]):
                     with cols[idx % 4]:
                         if item["mime"] == "application/pdf":
-                            st.info(f"📄 {item['name']}")
+                            st.info(f"📄 {item['name'][:10]}...", icon=":material/description:")
                         elif item.get("preview"):
-                            st.image(item["preview"], use_container_width=True, caption=f"Ảnh {idx + 1}")
+                            st.image(item["preview"], use_container_width=True)
 
-            st.markdown("---")
-
-            # BOX YÊU CẦU BỔ SUNG CHO CON AI
+            # --- KHU VỰC NHẬP PROMPT BỔ SUNG ---
             if "extra_notes_val" not in st.session_state:
                 st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
             extra_prompt = st.text_area(
-                "💡 Yêu cầu bổ sung cho con AI", 
+                "💡 Yêu cầu bổ sung cho AI", 
                 value=st.session_state["extra_notes_val"],
-                height=120,
-                help="Nhập thêm quy định định dạng hoặc lưu ý đặc biệt cho bài toán."
+                height=100,
+                placeholder="Nhập ghi chú định dạng thêm nếu có..."
             )
             st.session_state["extra_notes_val"] = extra_prompt
 
-            st.markdown("---")
-
-            # 2 NÚT THỰC THI (TRÍCH XUẤT / XÓA) ĐẶT CÙNG HÀNG
-            btn_col1, btn_col2 = st.columns(2)
+            # --- KHU VỰC THAO TÁC (TRÍCH XUẤT / XÓA) ---
+            btn_col1, btn_col2 = st.columns([2, 1], gap="small")
             with btn_col1:
                 btn_process = st.button(
                     "🚀 Trích xuất & Chuyển đổi", 
@@ -133,11 +173,12 @@ class MathOCRApp:
                 )
             with btn_col2:
                 btn_clear = st.button(
-                    "🗑️ Xóa danh sách ảnh", 
+                    "🗑️ Xóa tất cả", 
                     type="secondary", 
                     use_container_width=True
                 )
 
+            # SỰ KIỆN NÚT BẤM
             if btn_clear:
                 st.session_state["input_images"] = []
                 if "last_pasted" in st.session_state:
@@ -146,11 +187,11 @@ class MathOCRApp:
 
             if btn_process:
                 if not api_key:
-                    st.error("Vui lòng nhập Gemini API Key ở Sidebar!", icon=":material/warning:")
+                    st.error("Vui lòng nhập API Key ở thanh bên trái!", icon="🔑")
                 elif not st.session_state.get("input_images"):
-                    st.error("Vui lòng dán hoặc tải lên ít nhất 1 ảnh/PDF!", icon=":material/image:")
+                    st.error("Chưa có ảnh/PDF nào được chọn!", icon="🖼️")
                 else:
-                    with st.spinner("Đang phân tích và xử lý cấu trúc toán..."):
+                    with st.spinner("Đang xử lý toán học..."):
                         try:
                             processor = ProcessorFactory.get_processor(mode, api_service)
                             input_list = st.session_state["input_images"]
@@ -171,10 +212,10 @@ class MathOCRApp:
                                 )
 
                             st.session_state["result"] = result_code
-                            st.toast("Xử lý thành công!", icon="✅")
+                            st.toast("Trích xuất hoàn tất!", icon="✅")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Lỗi xử lý: {e}", icon=":material/error:")
+                            st.error(f"Lỗi hệ thống: {e}", icon="❌")
 
         # CỘT 2: OUTPUT LATEX CODE
         with col2:
