@@ -1,5 +1,6 @@
 import streamlit as st
 
+# Custom CSS cho giao diện
 CUSTOM_CSS = """
     <style>
     .main .block-container { 
@@ -25,10 +26,16 @@ CUSTOM_CSS = """
     </style>
 """
 
+# Định dạng mặc định bổ sung cho AI (đã khắc phục lỗi ImportError)
+DEFAULT_EXTRA_PROMPT = """- Đánh số câu bắt đầu từ Câu 1.
+- Không tự ý thay đổi nội dung toán học hay các công thức.
+- Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX."""
+
+# Lọc các model không hỗ trợ Vision
 NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
 DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
 
-# System Instructions theo từng chế độ xử lý (sử dụng Raw String r"""...""" để tránh lỗi escape sequence của LaTeX)
+# System Instructions cho các chế độ (sử dụng Raw String r"""...""" để tránh lỗi escape sequence)
 PROMPTS = {
     "EX_TEST": r"""
 Bạn là một chuyên gia soạn thảo đề thi LaTeX bằng gói `ex_test`.
