@@ -5,7 +5,8 @@ from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
 from ui import UIComponent
-from streamlit_paste_button import paste_image_button
+
+# Loại bỏ hoàn toàn thư viện paste_image_button bên thứ 3
 
 st.set_page_config(
     page_title="Math OCR Pro - Studio", 
@@ -14,99 +15,104 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# STYLING FIX SIZE & CHUẨN MÀU STUDIO MONOCHROME
-FIXED_LAYOUT_CSS = CUSTOM_CSS + """
+# STYLING CSS CỐ ĐỊNH LAYOUT THEO ĐÚNG BẢN VẼ WIREFRAME
+WIREFRAME_LAYOUT_CSS = CUSTOM_CSS + """
 <style>
-    :root {
-        --primary-indigo: #4F46E5 !important;
-        --primary-hover: #4338CA !important;
-        --bg-editor: #181825 !important;
-        --border-subtle: #313244 !important;
-        --text-color: #CDD6F4 !important;
-    }
-
-    /* Triệt tiêu màu đỏ viền focus mặc định */
-    div[data-baseweb="textarea"]:focus-within,
-    div[data-baseweb="input"]:focus-within {
-        border-color: var(--primary-indigo) !important;
-        box-shadow: 0 0 0 1px var(--primary-indigo) !important;
-    }
-
-    /* 1. KHUNG EDITOR CHÍNH - FIX KÍCH THƯỚC CỐ ĐỊNH */
-    .editor-container-box {
-        background-color: var(--bg-editor);
-        border: 1.5px solid var(--border-subtle);
-        border-radius: 12px;
-        padding: 14px;
-        height: 220px !important; /* Cố định độ cao khung main */
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        position: relative;
-        overflow: hidden;
-    }
-
-    /* Tối ưu Upload Dropzone nằm lọt lòng bên trong Box Editor */
-    div[data-testid="stFileUploader"] section {
-        background-color: rgba(255, 255, 255, 0.02) !important;
-        border: 1px dashed var(--border-subtle) !important;
+    /* 1. KHUNG BOX EDITOR (Container) */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #D1D5DB !important;
         border-radius: 8px !important;
-        padding: 10px !important;
-        height: 120px !important; /* Fix độ cao vùng kéo thả */
+        padding: 4px !important;
+        position: relative !important; /* Để neo nút Upload */
+        margin-bottom: 20px !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    }
+
+    /* 2. TEXT AREA NỀN TRONG SUỐT BÊN TRONG BOX */
+    .stTextArea textarea {
+        background-color: transparent !important;
+        border: none !important;
+        color: #111827 !important;
+        font-size: 16px !important;
+        padding: 16px !important;
+        resize: none !important;
+        box-shadow: none !important;
+    }
+    .stTextArea textarea:focus {
+        box-shadow: none !important;
+        border: none !important;
+    }
+    .stTextArea textarea::placeholder {
+        color: #9CA3AF !important;
+        font-weight: 400 !important;
+    }
+    
+    /* 3. NÚT UPLOAD TREO GÓC TRÊN BÊN PHẢI CỦA BOX 1 */
+    div[data-testid="stFileUploader"] {
+        position: absolute !important;
+        top: 12px !important;
+        right: 12px !important;
+        width: 100px !important;
+        z-index: 10 !important;
+    }
+    div[data-testid="stFileUploader"] section {
+        padding: 0 !important;
+        height: 38px !important;
+        border-radius: 6px !important;
+        background-color: #BDBDBD !important; /* Màu xám theo thiết kế */
+        border: none !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
     div[data-testid="stFileUploader"] section:hover {
-        border-color: var(--primary-indigo) !important;
-        background-color: rgba(79, 70, 229, 0.05) !important;
+        background-color: #A3A3A3 !important;
+    }
+    /* Ẩn icon mặc định và chèn chữ Upload */
+    div[data-testid="stFileUploader"] section > div {
+        display: none !important;
+    }
+    div[data-testid="stFileUploader"] section::after {
+        content: "Upload";
+        color: white;
+        font-weight: 500;
+        font-size: 15px;
+    }
+    /* Ẩn danh sách file mặc định của Streamlit */
+    div[data-testid="stFileUploader"] ul {
+        display: none !important;
     }
 
-    /* Căn chỉnh lại nút Clipboard góc trên */
-    div[data-testid="stCustomComponentV1"] iframe {
-        height: 38px !important;
-        width: 100% !important;
-    }
-
-    /* 2. KHUNG PROMPT PHÍA DƯỚI - FIX KÍCH THƯỚC CỐ ĐỊNH */
-    .stTextArea textarea {
-        background-color: var(--bg-editor) !important;
-        border: 1.5px solid var(--border-subtle) !important;
-        border-radius: 10px !important;
-        color: var(--text-color) !important;
-        font-size: 13.5px !important;
-        height: 80px !important; /* Cố định độ cao khung Prompt */
-        resize: none !important;
-    }
-
-    /* 3. NÚT CONVERT Ở GÓC DƯỚI BÊN PHẢI */
+    /* 4. NÚT CONVERT XANH LAM BÊN DƯỚI */
     .stButton button[kind="primary"] {
-        background-color: var(--primary-indigo) !important;
+        background-color: #45B6FE !important; /* Màu xanh lơ theo thiết kế */
+        color: white !important;
         border: none !important;
-        height: 42px !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        font-size: 15px !important;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
+        height: 44px !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
+        font-size: 16px !important;
     }
     .stButton button[kind="primary"]:hover {
-        background-color: var(--primary-hover) !important;
-        box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4) !important;
+        background-color: #3AA0E0 !important;
     }
+    
+    /* Nút Xóa tệp phụ */
     .stButton button[kind="secondary"] {
         background-color: transparent !important;
-        border: 1px solid var(--border-subtle) !important;
-        color: #A6ADC8 !important;
-        height: 42px !important;
-        border-radius: 8px !important;
+        border: 1px solid #D1D5DB !important;
+        color: #6B7280 !important;
+        height: 44px !important;
+        border-radius: 6px !important;
     }
     .stButton button[kind="secondary"]:hover {
-        border-color: var(--primary-indigo) !important;
-        color: var(--primary-indigo) !important;
+        border-color: #EF4444 !important;
+        color: #EF4444 !important;
     }
 </style>
 """
-st.markdown(FIXED_LAYOUT_CSS, unsafe_allow_html=True)
+st.markdown(WIREFRAME_LAYOUT_CSS, unsafe_allow_html=True)
 
 class MathOCRApp:
     def __init__(self):
@@ -132,132 +138,117 @@ class MathOCRApp:
 
         col1, col2 = st.columns([5, 7], gap="large")
 
-        # CỘT 1: THIẾT KẾ KHUNG CỐ ĐỊNH THEO WIREFRAME
+        # CỘT 1: THIẾT KẾ EXACTLY THEO WIREFRAME
         with col1:
-            st.markdown("### 📥 Box Editor Đầu Vào")
             
-            # --- BOX 1: EDITOR MAIN CONTAINER (FIXED SIZE) ---
-            head_col, btn_col = st.columns([6, 4])
-            with head_col:
-                st.caption("Dán hoặc kéo thả ảnh/PDF vào đây:")
-            with btn_col:
-                # Nút Dán Clipboard nằm gọn bên trên góc phải
-                paste_result = paste_image_button(
-                    label="📋 Paste Clipboard",
-                    background_color="#4F46E5",
-                    text_color="#FFFFFF",
-                    hover_background_color="#4338CA",
+            # --- BOX 1: EDITOR KÈM NÚT UPLOAD ---
+            with st.container(border=True):
+                # Khai báo File Uploader (CSS sẽ tự động kéo nó lên góc phải)
+                uploaded_files = st.file_uploader(
+                    "Upload Box", 
+                    type=["png", "jpg", "jpeg", "webp", "pdf"],
+                    accept_multiple_files=True,
+                    label_visibility="collapsed"
+                )
+                
+                # Text Area cho phép gõ nội dung bài toán
+                main_text = st.text_area(
+                    "Box 1", 
+                    height=200, 
+                    placeholder="Đây là box editor, tự paste được ảnh vào đây, bỏ nút copy từ clipboard đi.", 
+                    label_visibility="collapsed"
                 )
 
-            uploaded_files = st.file_uploader(
-                "Upload Box", 
-                type=["png", "jpg", "jpeg", "webp", "pdf"],
-                accept_multiple_files=True,
-                label_visibility="collapsed"
-            )
+                # Xử lý Logic File (Click vào nút Upload rồi bấm Ctrl+V vẫn nhận ảnh bình thường)
+                if uploaded_files:
+                    for file in uploaded_files:
+                        file_bytes = file.getvalue()
+                        mime_type = file.type
+                        if not any(item.get("name") == file.name for item in st.session_state["input_images"]):
+                            preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
+                            st.session_state["input_images"].append({
+                                "name": file.name,
+                                "bytes": file_bytes,
+                                "mime": mime_type,
+                                "preview": preview_img
+                            })
 
-            # Xử lý Paste
-            if paste_result.image_data is not None:
-                image = paste_result.image_data
-                buf = io.BytesIO()
-                image.save(buf, format="PNG")
-                img_bytes = buf.getvalue()
-                
-                if "last_pasted" not in st.session_state or st.session_state["last_pasted"] != img_bytes:
-                    st.session_state["last_pasted"] = img_bytes
-                    st.session_state["input_images"].append({
-                        "name": f"Clipboard_{len(st.session_state['input_images']) + 1}.png",
-                        "bytes": img_bytes,
-                        "mime": "image/png",
-                        "preview": image
-                    })
-                    st.toast("Đã dán ảnh!", icon="📋")
+                # Hiển thị ảnh đã nạp ngay bên trong Box 1
+                if st.session_state.get("input_images"):
+                    st.markdown("<hr style='margin: 8px 0; border-color: #F3F4F6;'>", unsafe_allow_html=True)
+                    cols = st.columns(5)
+                    for idx, item in enumerate(st.session_state["input_images"]):
+                        with cols[idx % 5]:
+                            if item["mime"] == "application/pdf":
+                                st.info("📄 PDF")
+                            elif item.get("preview"):
+                                st.image(item["preview"], use_container_width=True)
 
-            # Xử lý Upload
-            if uploaded_files:
-                for file in uploaded_files:
-                    file_bytes = file.getvalue()
-                    mime_type = file.type
-                    if not any(item.get("name") == file.name for item in st.session_state["input_images"]):
-                        preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
-                        st.session_state["input_images"].append({
-                            "name": file.name,
-                            "bytes": file_bytes,
-                            "mime": mime_type,
-                            "preview": preview_img
-                        })
+            # --- BOX 2: GHI CHÚ BỔ SUNG ---
+            with st.container(border=True):
+                if "extra_notes_val" not in st.session_state:
+                    st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
-            # Thanh hiển thị danh sách các tệp đã nhận
-            if st.session_state.get("input_images"):
-                cols = st.columns(min(len(st.session_state["input_images"]), 4))
-                for idx, item in enumerate(st.session_state["input_images"]):
-                    with cols[idx % 4]:
-                        if item["mime"] == "application/pdf":
-                            st.info(f"📄 {item['name'][:6]}..", icon=":material/description:")
-                        elif item.get("preview"):
-                            st.image(item["preview"], use_container_width=True)
+                extra_prompt = st.text_area(
+                    "Box 2", 
+                    value=st.session_state["extra_notes_val"],
+                    height=100,
+                    placeholder="Điền nội dung yêu cầu thêm AI vào box này, thiết kế thêm cho tôi...",
+                    label_visibility="collapsed"
+                )
+                st.session_state["extra_notes_val"] = extra_prompt
 
-            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-
-            # --- BOX 2: YÊU CẦU BỔ SUNG AI (FIXED SIZE 80PX) ---
-            if "extra_notes_val" not in st.session_state:
-                st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
-
-            extra_prompt = st.text_area(
-                "Yêu cầu bổ sung cho AI", 
-                value=st.session_state["extra_notes_val"],
-                placeholder="Điền nội dung yêu cầu thêm AI vào box này...",
-                label_visibility="collapsed"
-            )
-            st.session_state["extra_notes_val"] = extra_prompt
-
-            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-
-            # --- DƯỚI CÙNG: NÚT ACTION CĂN PHẢI ---
-            b_col1, b_col2, b_col3 = st.columns([4, 3, 3])
+            # --- HÀNG NÚT BẤM DƯỚI CÙNG ---
+            b_col1, b_col2, b_col3 = st.columns([5, 2, 3])
             with b_col2:
-                btn_clear = st.button("🗑️ Xóa tệp", type="secondary", use_container_width=True)
+                btn_clear = st.button("Xóa tệp", type="secondary", use_container_width=True)
             with b_col3:
                 btn_process = st.button("Convert", type="primary", use_container_width=True)
 
-            # Sự kiện thực thi
+            # SỰ KIỆN XỬ LÝ
             if btn_clear:
                 st.session_state["input_images"] = []
-                if "last_pasted" in st.session_state:
-                    del st.session_state["last_pasted"]
                 st.rerun()
 
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập API Key ở thanh bên!", icon="🔑")
-                elif not st.session_state.get("input_images"):
-                    st.error("Chưa có ảnh/PDF nào trong Box Editor!", icon="🖼️")
+                elif not st.session_state.get("input_images") and not main_text.strip():
+                    st.error("Vui lòng điền nội dung hoặc thêm ảnh!", icon="⚠️")
                 else:
-                    with st.spinner("Đang trích xuất mã toán..."):
+                    with st.spinner("Đang chuyển đổi toán học..."):
                         try:
+                            # Ghép cả nội dung Box 1 và Box 2 để gửi cho AI
+                            combined_prompt = ""
+                            if main_text.strip():
+                                combined_prompt += f"Nội dung văn bản kèm theo:\n{main_text}\n\n"
+                            if extra_prompt.strip():
+                                combined_prompt += f"Yêu cầu bổ sung:\n{extra_prompt}"
+
                             processor = ProcessorFactory.get_processor(mode, api_service)
-                            input_list = st.session_state["input_images"]
+                            input_list = st.session_state.get("input_images", [])
                             
                             try:
                                 result_code = processor.process(
                                     input_data=input_list,
                                     model=selected_model,
-                                    extra_prompt=extra_prompt
+                                    extra_prompt=combined_prompt
                                 )
                             except TypeError:
-                                first_item = input_list[0]
+                                # Fallback nếu process chỉ nhận 1 file
+                                first_item = input_list[0] if input_list else {"bytes": None, "mime": None}
                                 result_code = processor.process(
-                                    file_bytes=first_item["bytes"],
-                                    mime_type=first_item["mime"],
+                                    file_bytes=first_item.get("bytes"),
+                                    mime_type=first_item.get("mime"),
                                     model=selected_model,
-                                    extra_prompt=extra_prompt
+                                    extra_prompt=combined_prompt
                                 )
 
                             st.session_state["result"] = result_code
                             st.toast("Đã chuyển đổi xong!", icon="✅")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Lỗi: {e}", icon="❌")
+                            st.error(f"Lỗi hệ thống: {e}", icon="❌")
 
         # CỘT 2: OUTPUT LATEX CODE
         with col2:
