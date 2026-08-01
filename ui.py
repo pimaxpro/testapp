@@ -19,7 +19,7 @@ class AuthSystem:
             st.session_state["authenticated"] = False
 
         if not st.session_state["authenticated"]:
-            st.markdown("<h2 style='text-align: center; margin-top: 2rem;'> Mời cụ đăng nhập vào hệ thống! Chưa có tài khoản thì liên hệ bé Tuấn nhé </h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='text-align: center; margin-top: 2rem;'>🔒 Đăng nhập hệ thống Math OCR Studio</h2>", unsafe_allow_html=True)
             st.write("")
             
             col1, col2, col3 = st.columns([1, 2, 1])
@@ -51,7 +51,7 @@ class UIComponent:
 
     @staticmethod
     def render_header():
-        st.markdown("<h1 class='header-title'>Làm đi để tháng nào cũng có KPI</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 class='header-title'>Math OCR Pro Studio</h1>", unsafe_allow_html=True)
         st.markdown("Quý nào cũng đạt KPI nhé!")
         st.write("")
 
