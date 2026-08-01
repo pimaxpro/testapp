@@ -11,6 +11,7 @@ class BaseProcessor:
         """Làm sạch đầu ra, lấy phần nội dung mã LaTeX/TikZ"""
         if not text:
             return ""
+        # Bóc tách mã nằm trong block ```latex ... ``` hoặc ```xml ... ```
         match = re.search(r"```(?:latex|tikz|tex)?\n(.*?)```", text, re.DOTALL | re.IGNORECASE)
         if match:
             return match.group(1).strip()
@@ -18,10 +19,16 @@ class BaseProcessor:
 
 class LaTeXProcessor(BaseProcessor):
     def process(self, input_data: List[Dict[str, Any]], model: str, extra_prompt: str = "", **kwargs) -> str:
-        """Chức năng 1: Chuyển file sang LaTeX đầy đủ cấu trúc document"""
+        """Chức năng 1: Chuyển file sang LaTeX đầy đủ cấu trúc document hoàn chỉnh"""
         system_instruction = PROMPTS.get("STANDARD_LATEX", "")
 
-        full_prompt = system_instruction
+        # Bổ sung ép buộc lần nữa để đảm bảo luôn có preamble và document
+        requirements_instruction = (
+            "\n\nĐẶC BIỆT LƯU Ý: Mã đầu ra BẮT BUỘC phải bắt đầu bằng \\documentclass[12pt,a4paper]{article} "
+            "và kết thúc bằng \\end{document}. Tuyệt đối không được bỏ phần khai báo gói lệnh!"
+        )
+
+        full_prompt = system_instruction + requirements_instruction
         if extra_prompt.strip():
             full_prompt += f"\n\nYêu cầu bổ sung từ người dùng:\n{extra_prompt}"
 
@@ -70,9 +77,10 @@ class TikZProcessor(BaseProcessor):
 class ProcessorFactory:
     @staticmethod
     def get_processor(mode: str, api_service) -> BaseProcessor:
-        if "Latex" in mode or "1." in mode:
+        mode_lower = mode.lower()
+        if mode_lower == "latex" or "1." in mode_lower:
             return LaTeXProcessor(api_service)
-        elif "tikz" in mode.lower() or "3." in mode:
+        elif mode_lower == "tikz" or "3." in mode_lower:
             return TikZProcessor(api_service)
         else:
             return ExTestProcessor(api_service)
