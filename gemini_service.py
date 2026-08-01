@@ -29,6 +29,48 @@ class GeminiAPIService:
         except Exception:
             return DEFAULT_MODELS
 
+    def generate_content(
+        self, 
+        input_data: list = None, 
+        prompt: str = "", 
+        model: str = "gemini-2.5-flash",
+        system_instruction: str = ""
+    ) -> str:
+        """
+        Hàm cầu nối nhận input_data từ các Processor và chuẩn hóa nội dung 
+        trước khi gọi qua hàm generate_with_fallback.
+        """
+        if not self.client:
+            raise ValueError("Chưa cung cấp API Key!")
+
+        contents = []
+
+        # 1. Chuyển đổi dữ liệu binary (ảnh/PDF) từ input_data sang SDK Types Part
+        if input_data:
+            for item in input_data:
+                file_bytes = item.get("bytes")
+                mime_type = item.get("mime", "image/png")
+                if file_bytes:
+                    part = types.Part.from_bytes(
+                        data=file_bytes,
+                        mime_type=mime_type
+                    )
+                    contents.append(part)
+
+        # 2. Đính kèm văn bản yêu cầu/đề toán (Prompt)
+        if prompt and prompt.strip():
+            contents.append(prompt)
+
+        if not contents:
+            raise ValueError("Không có nội dung dữ liệu (văn bản hoặc file) được gửi tới AI!")
+
+        # 3. Gọi hàm xử lý chính có cơ chế Fallback
+        return self.generate_with_fallback(
+            contents=contents,
+            system_instruction=system_instruction,
+            selected_model=model
+        )
+
     def generate_with_fallback(
         self, 
         contents: list, 
@@ -48,11 +90,13 @@ class GeminiAPIService:
                     model=model_name,
                     contents=contents,
                     config=types.GenerateContentConfig(
-                        system_instruction=system_instruction,
+                        system_instruction=system_instruction if system_instruction else None,
                         temperature=0.1
                     )
                 )
-                return self._clean_output(response.text)
+                if response and hasattr(response, 'text') and response.text:
+                    return self._clean_output(response.text)
+                return ""
             except Exception as e:
                 last_exception = e
                 err_str = str(e)
@@ -63,13 +107,19 @@ class GeminiAPIService:
                     continue
                 raise e
 
-        raise last_exception
+        if last_exception:
+            raise last_exception
+        return ""
 
     @staticmethod
     def _clean_output(text: str) -> str:
+        if not text:
+            return ""
         clean_res = text.strip()
         if clean_res.startswith("```latex"):
             clean_res = clean_res[8:]
+        if clean_res.startswith("```tikz"):
+            clean_res = clean_res[7:]
         if clean_res.startswith("```"):
             clean_res = clean_res[3:]
         if clean_res.endswith("```"):
