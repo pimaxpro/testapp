@@ -9,7 +9,7 @@ from streamlit_paste_button import paste_image_button
 
 st.set_page_config(
     page_title="Math OCR Pro - OOP Studio", 
-    page_icon="🧮", 
+    page_icon=":material/functions:", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -42,7 +42,7 @@ class MathOCRApp:
 
         # CỘT 1: INPUT FILE / CLIPBOARD
         with col1:
-            st.markdown("### 1. Tải hoặc Dán Ảnh (Ctrl+V) / PDF")
+            st.markdown("### :material/upload_file: 1. Tải hoặc Dán Ảnh (Ctrl+V) / PDF")
             
             paste_result = paste_image_button(
                 label="📋 Dán ảnh từ Clipboard (Ctrl+V)",
@@ -62,7 +62,7 @@ class MathOCRApp:
 
             # Xử lý Clipboard
             if paste_result.image_data is not None:
-                st.info("Đã nhận ảnh từ Clipboard!")
+                st.info("Đã nhận ảnh từ Clipboard!", icon=":material/content_paste_go:")
                 image = paste_result.image_data
                 st.image(image, use_container_width=True)
                 
@@ -77,13 +77,13 @@ class MathOCRApp:
                 mime_type = uploaded_file.type
                 
                 if mime_type == "application/pdf":
-                    st.success(f"Đã tải lên file PDF: **{uploaded_file.name}**", icon=":material/description:")
+                    st.success(f"Đã tải lên file PDF: **{uploaded_file.name}**", icon=":material/picture_as_pdf:")
                 else:
                     st.image(uploaded_file, use_container_width=True)
 
             # Nút bấm thực thi
             if file_bytes:
-                if st.button("Trích xuất & Chuyển đổi Mã", type="primary", use_container_width=True, icon=":material/rocket_launch:"):
+                if st.button("Trích xuất & Chuyển đổi Mã", type="primary", use_container_width=True, icon=":material/auto_awesome:"):
                     if not api_key:
                         st.error("Vui lòng nhập Gemini API Key ở Sidebar!", icon=":material/warning:")
                     else:
@@ -96,33 +96,18 @@ class MathOCRApp:
                                     model=selected_model,
                                     extra_prompt=extra_prompt
                                 )
+                                # Lưu mã gốc (backup) và mã xử lý hiện tại vào session state
+                                st.session_state["raw_result"] = result_code
                                 st.session_state["result"] = result_code
-                                st.toast("Xử lý thành công!", icon="✅")
+                                st.toast("Xử lý thành công!", icon=":material/task_alt:")
                             except Exception as e:
                                 st.error(f"Lỗi xử lý: {e}", icon=":material/error:")
             else:
                 st.info("Dán ảnh từ bộ nhớ tạm (Ctrl+V) hoặc chọn file để bắt đầu.", icon=":material/info:")
 
-        # CỘT 2: OUTPUT LATEX CODE
+        # CỘT 2: LATEX CODE EDITOR STUDIO (Tích hợp chỉnh sửa trực tiếp)
         with col2:
-            st.markdown("### 2. Mã LaTeX Trích Xuất")
-            if "result" in st.session_state and st.session_state["result"]:
-                latex_code = st.session_state["result"]
-                
-                if "\\begin{tkz" in latex_code or "\\begin{tikzpicture}" in latex_code:
-                    st.warning("Phát hiện mã đồ thị / Bảng biến thiên (TikZ/tkz-tab)", icon=":material/draw:")
-                
-                st.code(latex_code, language="latex")
-                
-                st.markdown("**Chỉnh sửa nhanh mã:**")
-                st.text_area(
-                    "Code Editor", 
-                    value=latex_code, 
-                    height=300, 
-                    label_visibility="collapsed"
-                )
-            else:
-                UIComponent.render_empty_state()
+            UIComponent.render_editor_section()
 
 if __name__ == "__main__":
     app = MathOCRApp()
