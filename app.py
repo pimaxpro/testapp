@@ -9,7 +9,7 @@ from streamlit_paste_button import paste_image_button
 
 st.set_page_config(
     page_title="Math OCR Pro - OOP Studio", 
-    page_icon=":material/functions:", 
+    page_icon="🧮", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -18,22 +18,17 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 class MathOCRApp:
     """Controller chính điều phối toàn bộ ứng dụng"""
     def __init__(self):
-        # Khởi tạo trạng thái lưu trữ API Key
         if "api_key" not in st.session_state:
-            # Kiểm tra xem có key sẵn trên URL parameter không
             st.session_state["api_key"] = st.query_params.get("api_key", "")
 
     def run(self):
         UIComponent.render_header()
         
-        # Khởi tạo API Service với Key đã được khôi phục (nếu có)
         current_key = st.session_state.get("api_key", "")
         api_service = GeminiAPIService(api_key=current_key)
         
-        # Render Sidebar & đồng bộ dữ liệu
         api_key, mode, selected_model, extra_prompt = UIComponent.render_sidebar(api_service)
         
-        # Cập nhật instance API Service
         api_service.api_key = api_key
         if api_key and not api_service.client:
             api_service.client = GeminiAPIService(api_key).client
@@ -42,7 +37,7 @@ class MathOCRApp:
 
         # CỘT 1: INPUT FILE / CLIPBOARD
         with col1:
-            st.markdown("### :material/upload_file: 1. Tải hoặc Dán Ảnh (Ctrl+V) / PDF")
+            st.markdown("### 1. Tải hoặc Dán Ảnh (Ctrl+V) / PDF")
             
             paste_result = paste_image_button(
                 label="📋 Dán ảnh từ Clipboard (Ctrl+V)",
@@ -60,9 +55,8 @@ class MathOCRApp:
             file_bytes = None
             mime_type = None
 
-            # Xử lý Clipboard
             if paste_result.image_data is not None:
-                st.info("Đã nhận ảnh từ Clipboard!", icon=":material/content_paste_go:")
+                st.info("Đã nhận ảnh từ Clipboard!")
                 image = paste_result.image_data
                 st.image(image, use_container_width=True)
                 
@@ -71,19 +65,17 @@ class MathOCRApp:
                 file_bytes = buf.getvalue()
                 mime_type = "image/png"
 
-            # Xử lý File tải lên
             elif uploaded_file is not None:
                 file_bytes = uploaded_file.getvalue()
                 mime_type = uploaded_file.type
                 
                 if mime_type == "application/pdf":
-                    st.success(f"Đã tải lên file PDF: **{uploaded_file.name}**", icon=":material/picture_as_pdf:")
+                    st.success(f"Đã tải lên file PDF: **{uploaded_file.name}**", icon=":material/description:")
                 else:
                     st.image(uploaded_file, use_container_width=True)
 
-            # Nút bấm thực thi
             if file_bytes:
-                if st.button("Trích xuất & Chuyển đổi Mã", type="primary", use_container_width=True, icon=":material/auto_awesome:"):
+                if st.button("Trích xuất & Chuyển đổi Mã", type="primary", use_container_width=True, icon=":material/rocket_launch:"):
                     if not api_key:
                         st.error("Vui lòng nhập Gemini API Key ở Sidebar!", icon=":material/warning:")
                     else:
@@ -96,18 +88,16 @@ class MathOCRApp:
                                     model=selected_model,
                                     extra_prompt=extra_prompt
                                 )
-                                # Lưu mã gốc (backup) và mã xử lý hiện tại vào session state
-                                st.session_state["raw_result"] = result_code
                                 st.session_state["result"] = result_code
-                                st.toast("Xử lý thành công!", icon=":material/task_alt:")
+                                st.toast("Xử lý thành công!", icon="✅")
                             except Exception as e:
                                 st.error(f"Lỗi xử lý: {e}", icon=":material/error:")
             else:
                 st.info("Dán ảnh từ bộ nhớ tạm (Ctrl+V) hoặc chọn file để bắt đầu.", icon=":material/info:")
 
-        # CỘT 2: LATEX CODE EDITOR STUDIO (Tích hợp chỉnh sửa trực tiếp)
+        # CỘT 2: OUTPUT LATEX CODE NGUYÊN BẢN
         with col2:
-            UIComponent.render_editor_section()
+            UIComponent.render_output_section()
 
 if __name__ == "__main__":
     app = MathOCRApp()
