@@ -1,6 +1,5 @@
 # ui.py
 import streamlit as st
-import streamlit.components.v1 as components
 from gemini_service import GeminiAPIService
 from config import DEFAULT_EXTRA_PROMPT
 
@@ -70,7 +69,7 @@ class UIComponent:
 
     @staticmethod
     def render_output_section():
-        """Khu vực Output: Dùng ĐÚNG st.code đẹp mắt ban đầu nhưng CHO PHÉP SỬA TRỰC TIẾP"""
+        """Khu vực Output: Box code cho phép sửa trực tiếp, tự động xuống dòng"""
         st.markdown("### 2. Mã LaTeX Trích Xuất")
         
         if "result" in st.session_state and st.session_state["result"]:
@@ -79,22 +78,17 @@ class UIComponent:
             if "\\begin{tkz" in latex_code or "\\begin{tikzpicture}" in latex_code:
                 st.warning("Phát hiện mã đồ thị / Bảng biến thiên (TikZ/tkz-tab)", icon=":material/draw:")
             
-            # 1. GIỮ NGUYÊN BOX CODE ĐẸP MẮT BAN ĐẦU (Có Syntax Highlight + Nút Copy)
-            st.code(latex_code, language="latex", line_numbers=True)
-
-            # 2. Inject đoạn JS nhỏ để biến thẻ code đó thành editable
-            components.html("""
-                <script>
-                const editInterval = setInterval(() => {
-                    const codeBlock = window.parent.document.querySelector('div[data-testid="stCodeBlock"] code');
-                    if (codeBlock) {
-                        codeBlock.setAttribute('contenteditable', 'true');
-                        codeBlock.setAttribute('spellcheck', 'false');
-                        clearInterval(editInterval);
-                    }
-                }, 100);
-                </script>
-            """, height=0, width=0)
+            # Ô soạn thảo kết quả: Chỉnh sửa được, phông code, tự xuống dòng khi quá dài
+            updated_code = st.text_area(
+                label="LaTeX Output Code Editor",
+                value=latex_code,
+                height=520,
+                label_visibility="collapsed"
+            )
+            
+            # Đồng bộ lại session_state khi người dùng chỉnh sửa
+            if updated_code != latex_code:
+                st.session_state["result"] = updated_code
 
         else:
             UIComponent.render_empty_state()
