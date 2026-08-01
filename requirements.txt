@@ -1,4 +1,5 @@
 streamlit
 google-genai
 streamlit-paste-button
+streamlit-code-editor
 Pillow
