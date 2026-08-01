@@ -1,7 +1,9 @@
 # app.py
 import io
+import base64
 import streamlit as st
-from PIL import Image, ImageGrab
+import streamlit.components.v1 as components
+from PIL import Image
 from config import CUSTOM_CSS, DEFAULT_EXTRA_PROMPT
 from gemini_service import GeminiAPIService
 from processors import ProcessorFactory
@@ -80,7 +82,7 @@ class MathOCRApp:
             st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
             # Hàng nút thao tác: Upload File, Dán Clipboard, Xóa tất cả, Convert
-            act_col1, act_col2, act_col3, act_col4 = st.columns([4, 3, 3, 3])
+            act_col1, act_col2, act_col3 = st.columns([5, 3.5, 3.5])
             
             with act_col1:
                 uploaded_files = st.file_uploader(
@@ -92,13 +94,75 @@ class MathOCRApp:
                 )
 
             with act_col2:
-                btn_paste = st.button("📋 Dán Clipboard", type="secondary", use_container_width=True)
-            
-            with act_col3:
                 btn_clear_all = st.button("🗑️ Xóa tất cả", type="secondary", use_container_width=True)
                 
-            with act_col4:
+            with act_col3:
                 btn_process = st.button("Convert 🚀", type="primary", use_container_width=True)
+
+            # --- KHU VỰC DÁN CLIPBOARD QUA JAVASCRIPT (HOẠT ĐỘNG TỐT TRÊN LINUX & CLOUD) ---
+            st.caption("📋 **Dán ảnh từ Clipboard:** Nhấp vào ô bên dưới rồi nhấn `Ctrl + V` (hoặc `Cmd + V`)")
+            clipboard_data = components.html(
+                """
+                <div id="paste-zone" style="
+                    border: 2px dashed #999;
+                    border-radius: 8px;
+                    padding: 12px;
+                    text-align: center;
+                    color: #666;
+                    font-family: sans-serif;
+                    font-size: 13px;
+                    cursor: pointer;
+                    background-color: #fafafa;
+                ">
+                    📌 Click vào đây và nhấn <b>Ctrl + V</b> để dán ảnh
+                </div>
+                <script>
+                const pasteZone = document.getElementById('paste-zone');
+                document.addEventListener('paste', function(e) {
+                    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                    for (let item of items) {
+                        if (item.type.indexOf('image') !== -1) {
+                            const blob = item.getAsFile();
+                            const reader = new FileReader();
+                            reader.onload = function(event) {
+                                window.parent.postMessage({
+                                    type: 'streamlit:setComponentValue',
+                                    value: event.target.result
+                                }, '*');
+                            };
+                            reader.readAsDataURL(blob);
+                            pasteZone.innerHTML = "✅ Đã nhận ảnh từ Clipboard!";
+                            pasteZone.style.borderColor = "#4CAF50";
+                            break;
+                        }
+                    }
+                });
+                </script>
+                """,
+                height=65
+            )
+
+            # Xử lý dữ liệu Base64 nhận từ Clipboard JavaScript
+            if clipboard_data and isinstance(clipboard_data, str) and clipboard_data.startswith("data:image"):
+                try:
+                    header, encoded = clipboard_data.split(",", 1)
+                    file_bytes = base64.b64decode(encoded)
+                    preview_img = Image.open(io.BytesIO(file_bytes))
+                    
+                    img_name = f"clipboard_{len(st.session_state['input_images']) + 1}.png"
+                    
+                    # Kiểm tra xem ảnh đã được thêm chưa để tránh trùng lặp khi rerun
+                    if not any(item.get("bytes") == file_bytes for item in st.session_state["input_images"]):
+                        st.session_state["input_images"].append({
+                            "name": img_name,
+                            "bytes": file_bytes,
+                            "mime": "image/png",
+                            "preview": preview_img
+                        })
+                        st.toast("Đã dán ảnh từ Clipboard thành công!", icon="📋")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Lỗi khi xử lý ảnh dán: {e}", icon="❌")
 
             # Xử lý file upload
             if uploaded_files:
@@ -119,29 +183,6 @@ class MathOCRApp:
                 if has_new_file:
                     st.session_state["uploader_key"] += 1
                     st.rerun()
-
-            # Xử lý dán Clipboard
-            if btn_paste:
-                try:
-                    pasted_image = ImageGrab.grabclipboard()
-                    if isinstance(pasted_image, Image.Image):
-                        img_byte_arr = io.BytesIO()
-                        pasted_image.save(img_byte_arr, format='PNG')
-                        file_bytes = img_byte_arr.getvalue()
-                        img_name = f"clipboard_{len(st.session_state['input_images']) + 1}.png"
-                        
-                        st.session_state["input_images"].append({
-                            "name": img_name,
-                            "bytes": file_bytes,
-                            "mime": "image/png",
-                            "preview": pasted_image
-                        })
-                        st.toast("Đã dán ảnh từ Clipboard thành công!", icon="📋")
-                        st.rerun()
-                    else:
-                        st.warning("Không tìm thấy dữ liệu hình ảnh trong Clipboard!", icon="⚠️")
-                except Exception as e:
-                    st.error(f"Lỗi khi đọc Clipboard: {e}", icon="❌")
 
             # Sự kiện nút Xóa tất cả
             if btn_clear_all:
