@@ -21,7 +21,7 @@ class MathOCRApp:
         pass
 
     def run(self):
-        # 0. KHỞI TẠO SESSION STATE AN TOÀN (Ngay đầu hàm run)
+        # KHỞI TẠO SESSION STATE AN TOÀN
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.query_params.get("api_key", "")
         if "input_images" not in st.session_state:
@@ -32,7 +32,7 @@ class MathOCRApp:
         current_key = st.session_state.get("api_key", "")
         api_service = GeminiAPIService(api_key=current_key)
         
-        # 1. SIDEBAR (Chỉ nhận 3 giá trị)
+        # SIDEBAR
         api_key, mode, selected_model = UIComponent.render_sidebar(api_service)
         
         api_service.api_key = api_key
@@ -41,34 +41,36 @@ class MathOCRApp:
 
         col1, col2 = st.columns([5, 7], gap="large")
 
-        # CỘT 1: INPUT FILE / CLIPBOARD / NỐI DANH SÁCH ÁNH
+        # CỘT 1: INPUT FILE / CLIPBOARD
         with col1:
             st.markdown("### 1. Dữ liệu đầu vào")
             
-            # Nút dán Clipboard
-            paste_result = paste_image_button(
-                label="📋 Dán ảnh từ Clipboard (Ctrl+V)",
-                background_color="#4F46E5",
-                text_color="#FFFFFF",
-                hover_background_color="#3B82F6",
-            )
+            # --- ĐẶT 2 NÚT NẮM CÙNG 1 HÀNG ---
+            in_col1, in_col2 = st.columns(2)
 
-            # Uploader nhận nhiều file
-            uploaded_files = st.file_uploader(
-                "Hoặc chọn nhiều file Ảnh / PDF từ máy tính", 
-                type=["png", "jpg", "jpeg", "webp", "pdf"],
-                accept_multiple_files=True,
-                label_visibility="visible"
-            )
+            with in_col1:
+                paste_result = paste_image_button(
+                    label="📋 Dán từ Clipboard",
+                    background_color="#4F46E5",
+                    text_color="#FFFFFF",
+                    hover_background_color="#3B82F6",
+                )
 
-            # Xử lý khi dán ảnh từ Clipboard -> Đưa vào danh sách
+            with in_col2:
+                uploaded_files = st.file_uploader(
+                    "Chọn file Ảnh / PDF", 
+                    type=["png", "jpg", "jpeg", "webp", "pdf"],
+                    accept_multiple_files=True,
+                    label_visibility="collapsed"  # Ẩn bớt nhãn thừa để 2 nút cân bằng hơn
+                )
+
+            # Xử lý khi dán ảnh từ Clipboard
             if paste_result.image_data is not None:
                 image = paste_result.image_data
                 buf = io.BytesIO()
                 image.save(buf, format="PNG")
                 img_bytes = buf.getvalue()
                 
-                # Tránh thêm lặp lại cùng một ảnh clipboard
                 if "last_pasted" not in st.session_state or st.session_state["last_pasted"] != img_bytes:
                     st.session_state["last_pasted"] = img_bytes
                     st.session_state["input_images"].append({
@@ -79,13 +81,12 @@ class MathOCRApp:
                     })
                     st.toast("Đã thêm ảnh từ Clipboard!", icon="📋")
 
-            # Xử lý các file từ file_uploader -> Đưa vào danh sách
+            # Xử lý các file từ file_uploader
             if uploaded_files:
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
                     mime_type = file.type
                     
-                    # Tránh thêm lặp lại file cùng tên
                     if not any(item.get("name") == file.name for item in st.session_state["input_images"]):
                         preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
                         st.session_state["input_images"].append({
@@ -122,7 +123,7 @@ class MathOCRApp:
 
             st.markdown("---")
 
-            # 2 NÚT ĐẶT CÙNG HÀNG, KÍCH THƯỚC BẰNG NHAU
+            # 2 NÚT THỰC THI (TRÍCH XUẤT / XÓA) ĐẶT CÙNG HÀNG
             btn_col1, btn_col2 = st.columns(2)
             with btn_col1:
                 btn_process = st.button(
@@ -137,14 +138,12 @@ class MathOCRApp:
                     use_container_width=True
                 )
 
-            # Xử lý sự kiện Xóa danh sách
             if btn_clear:
                 st.session_state["input_images"] = []
                 if "last_pasted" in st.session_state:
                     del st.session_state["last_pasted"]
                 st.rerun()
 
-            # Xử lý sự kiện Trích xuất
             if btn_process:
                 if not api_key:
                     st.error("Vui lòng nhập Gemini API Key ở Sidebar!", icon=":material/warning:")
@@ -154,19 +153,15 @@ class MathOCRApp:
                     with st.spinner("Đang phân tích và xử lý cấu trúc toán..."):
                         try:
                             processor = ProcessorFactory.get_processor(mode, api_service)
-                            
-                            # Tương thích cả trường hợp xử lý 1 file hoặc danh sách file
                             input_list = st.session_state["input_images"]
                             
                             try:
-                                # Thử gọi với kiểu danh sách batch
                                 result_code = processor.process(
                                     input_data=input_list,
                                     model=selected_model,
                                     extra_prompt=extra_prompt
                                 )
                             except TypeError:
-                                # Trở về fallback gọi với file đầu tiên nếu Processor cũ chưa hỗ trợ batch list
                                 first_item = input_list[0]
                                 result_code = processor.process(
                                     file_bytes=first_item["bytes"],
@@ -181,7 +176,7 @@ class MathOCRApp:
                         except Exception as e:
                             st.error(f"Lỗi xử lý: {e}", icon=":material/error:")
 
-        # CỘT 2: OUTPUT LATEX CODE NGUYÊN BẢN
+        # CỘT 2: OUTPUT LATEX CODE
         with col2:
             UIComponent.render_output_section()
 
