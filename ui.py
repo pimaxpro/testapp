@@ -6,9 +6,10 @@ from config import DEFAULT_EXTRA_PROMPT
 class AuthSystem:
     # Danh sách tài khoản & mật khẩu
     USERS = {
-        "admin": "123456",
-        "thayduong": "math2026",
-        "teacher": "latex123"
+        "0839032003": "2003",
+        "0343763310": "3310",
+        "0943170177": "0177",
+        "0934682505": "2505"
     }
 
     @classmethod
@@ -43,15 +44,15 @@ class AuthSystem:
 class UIComponent:
     # --- KHU VỰC LƯU TRỮ API KEY DÙNG CHUNG (THẦY CẬP NHẬT TẠI ĐÂY) ---
     SYSTEM_API_KEYS = {
-        "Key Hệ Thống 1 (Chính)": "AIzaSy...DienKey1VaoDay...",
-        "Key Hệ Thống 2 (Dự phòng 1)": "AIzaSy...DienKey2VaoDay...",
-        "Key Hệ Thống 3 (Dự phòng 2)": "AIzaSy...DienKey3VaoDay..."
+        "Key Hệ Thống 1 (Chính)": "AQ.Ab8RN6K1eOQa7aiXkYNdPtpKcnDSXLw7zTK7SrUvw01Cdf1-gw",
+        "Key Hệ Thống 2 (Dự phòng 1)": "AQ.Ab8RN6L3v5pf216_mHlBksO3Py44wnlxmicDCzTS99Th-pao1w",
+        "Key Hệ Thống 3 (Dự phòng 2)": "AQ.Ab8RN6LCTf6mo4nUUrCqAqlDYI8B6oFAGQGu7YzIjGcDiRBKeA"
     }
 
     @staticmethod
     def render_header():
         st.markdown("<h1 class='header-title'>Math OCR Pro Studio</h1>", unsafe_allow_html=True)
-        st.markdown("Hệ thống chuyển đổi **Ảnh / PDF / Clipboard** thành mã **ex_test**, **TikZ**, và **Tự động soạn Lời giải**.")
+        st.markdown("Quý nào cũng đạt KPI nhé!")
         st.write("")
 
     @staticmethod
@@ -59,7 +60,6 @@ class UIComponent:
         with st.sidebar:
             st.markdown("## :material/settings: Cấu hình & Chức năng")
             st.markdown("---")
-            
             st.markdown("### 🔑 Cấu hình Gemini API Key")
             
             # Tùy chọn nguồn API Key
