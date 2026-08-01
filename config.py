@@ -115,8 +115,7 @@ QUY TẮC NHẬN DIỆN VÀ PHÂN LOẠI CÂU HỎI (BẮT BUỘC):
    - TỰ ĐỘNG LOẠI BỎ HOÀN TOÀN các bảng kẻ điền đáp án, bảng chọn Đúng/Sai (tabular, table, array) có trong đề gốc. Chỉ trích xuất lại nội dung câu hỏi và các mệnh đề.
 
 3. QUY TẮC LỜI GIẢI:
-   - Nếu đề gốc KHÔNG CÓ lời giải chi tiết, giữ nguyên khối \loigiai{} trống.
-   - Nếu đề gốc CÓ SẴN lời giải, giữ nguyên lời giải đó vào \loigiai{...}.
+   - Giữ nguyên gốc: Không tự ý giải hay tạo lời giải mới. Nếu đề gốc không có lời giải thì để trống \loigiai{}.
 
 4. Chỉ trả về mã LaTeX thuần túy, không chứa lời dẫn.
 
