@@ -56,9 +56,14 @@ with st.sidebar:
     # Danh sách Model chuẩn, cập nhật chính xác tên API
     model_choice = st.selectbox(
         "Mô hình Gemini", 
-        ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"],
+        [
+            "gemini-2.0-flash",          # Mô hình thế hệ mới, tốc độ cực nhanh (Khuyên dùng)
+            "gemini-2.0-flash-lite",     # Bản tối ưu tốc độ và hạn ngạch
+            "gemini-1.5-flash-latest",    # Alias bản Flash 1.5 ổn định
+            "gemini-1.5-pro-latest"       # Alias bản Pro 1.5
+        ],
         index=0,
-        help="Khuyên dùng gemini-1.5-flash để đạt tốc độ cao nhất và không lo đụng trần Quota miễn phí."
+        help="Khuyên dùng gemini-2.0-flash để đạt tốc độ nhận diện cao nhất và hạn ngạch thoải mái."
     )
     
     extra_notes = st.text_area(
