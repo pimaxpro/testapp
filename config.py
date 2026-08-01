@@ -26,7 +26,8 @@ CUSTOM_CSS = """
 DEFAULT_EXTRA_PROMPT = """- Tái tạo chính xác từng dòng, đoạn văn và thứ tự trong file gốc.
 - Không tự ý thay đổi nội dung toán học hay các công thức.
 - Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX.
-- Chuyển chính xác cả footer, header của văn bản (nếu có)"""
+- Chuyển chính xác cả footer, header của văn bản (nếu có)
+- Nếu có tcolorbox thì phải chuyển sang chính xác kể cả màu sắc"""
 
 # Lọc các model không hỗ trợ Vision
 NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
