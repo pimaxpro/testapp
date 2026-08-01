@@ -4,7 +4,7 @@ from gemini_service import GeminiAPIService
 from config import DEFAULT_EXTRA_PROMPT
 
 class AuthSystem:
-    # Danh sách tài khoản được phép đăng nhập (Thầy có thể thêm/sửa tùy ý)
+    # Danh sách tài khoản & mật khẩu
     USERS = {
         "admin": "123456",
         "thayduong": "math2026",
@@ -13,7 +13,7 @@ class AuthSystem:
 
     @classmethod
     def check_auth(cls):
-        """Kiểm tra xem người dùng đã đăng nhập chưa, nếu chưa sẽ hiện màn hình Form Đăng nhập"""
+        """Kiểm tra xem người dùng đã đăng nhập chưa"""
         if "authenticated" not in st.session_state:
             st.session_state["authenticated"] = False
 
@@ -41,6 +41,13 @@ class AuthSystem:
 
 
 class UIComponent:
+    # --- KHU VỰC LƯU TRỮ API KEY DÙNG CHUNG (THẦY CẬP NHẬT TẠI ĐÂY) ---
+    SYSTEM_API_KEYS = {
+        "Key Hệ Thống 1 (Chính)": "AIzaSy...DienKey1VaoDay...",
+        "Key Hệ Thống 2 (Dự phòng 1)": "AIzaSy...DienKey2VaoDay...",
+        "Key Hệ Thống 3 (Dự phòng 2)": "AIzaSy...DienKey3VaoDay..."
+    }
+
     @staticmethod
     def render_header():
         st.markdown("<h1 class='header-title'>Math OCR Pro Studio</h1>", unsafe_allow_html=True)
@@ -53,27 +60,42 @@ class UIComponent:
             st.markdown("## :material/settings: Cấu hình & Chức năng")
             st.markdown("---")
             
-            saved_key = st.session_state.get("api_key", "")
-            if not saved_key:
-                query_params = st.query_params
-                saved_key = query_params.get("api_key", "")
-                if saved_key:
-                    st.session_state["api_key"] = saved_key
-
-            api_key_input = st.text_input(
-                "Gemini API Key", 
-                value=saved_key, 
-                type="password",
-                help="Key sẽ được tự động ghi nhớ cho các lần truy cập sau trên trình duyệt này."
-            )
+            st.markdown("### 🔑 Cấu hình Gemini API Key")
             
-            if api_key_input != st.session_state.get("api_key", ""):
-                st.session_state["api_key"] = api_key_input
-                st.query_params["api_key"] = api_key_input
-                st.rerun()
+            # Tùy chọn nguồn API Key
+            key_source = st.radio(
+                "Nguồn API Key:",
+                options=["Dùng Key mặc định (Kho hệ thống)", "Nhập Key cá nhân"],
+                index=0,
+                horizontal=False
+            )
 
-            if api_key_input:
-                st.caption(":material/check_circle: *Đã lưu API Key cho phiên làm việc này*")
+            active_api_key = ""
+
+            if key_source == "Dùng Key mặc định (Kho hệ thống)":
+                # Lựa chọn 1 trong các Key có sẵn trong kho
+                selected_key_label = st.selectbox(
+                    "Chọn Key hệ thống khả dụng:",
+                    options=list(UIComponent.SYSTEM_API_KEYS.keys())
+                )
+                active_api_key = UIComponent.SYSTEM_API_KEYS.get(selected_key_label, "")
+                st.caption("🟢 *Đang sử dụng API Key do hệ thống cung cấp.*")
+
+            else:
+                # Nhập Key cá nhân
+                saved_key = st.session_state.get("api_key_custom", "")
+                active_api_key = st.text_input(
+                    "Nhập Gemini API Key của bạn:", 
+                    value=saved_key, 
+                    type="password",
+                    help="Key của bạn sẽ được ưu tiên sử dụng riêng."
+                )
+                st.session_state["api_key_custom"] = active_api_key
+                if active_api_key:
+                    st.caption(":material/check_circle: *Đã ghi nhận Key cá nhân.*")
+
+            # Cập nhật Key vào Session State chung
+            st.session_state["api_key"] = active_api_key
 
             st.markdown("---")
 
@@ -101,21 +123,19 @@ class UIComponent:
 
             st.markdown("---")
 
-            available_models = api_service.get_available_models() if api_key_input else ["Vui lòng nhập API Key"]
+            available_models = api_service.get_available_models() if active_api_key else ["Vui lòng chọn/nhập API Key"]
             model_choice = st.selectbox("Mô hình Gemini Vision", available_models, index=0)
 
-            return api_key_input, mode, model_choice, add_solution
+            return active_api_key, mode, model_choice, add_solution
 
     @staticmethod
     def render_input_section():
         """Khu vực Upload, Paste Clipboard, Preview và Yêu cầu bổ sung"""
         st.markdown("### 1. Dữ liệu đầu vào")
 
-        # Cấu trúc lưu trữ danh sách tệp trong Session State
         if "input_images" not in st.session_state:
             st.session_state["input_images"] = []
 
-        # Hàng nút upload và dán clipboard
         col_up, col_paste = st.columns([7, 3])
         with col_up:
             uploaded_files = st.file_uploader(
@@ -127,7 +147,6 @@ class UIComponent:
         with col_paste:
             btn_paste = st.button("📋 Dán từ Clipboard", use_container_width=True)
 
-        # Hiển thị danh sách / Preview các ảnh đã upload/dán
         if st.session_state["input_images"]:
             st.caption(f"📸 Đã nhận **{len(st.session_state['input_images'])}** tệp đầu vào:")
             cols = st.columns(min(len(st.session_state["input_images"]), 4))
@@ -137,7 +156,6 @@ class UIComponent:
 
         st.markdown("---")
 
-        # Box Yêu cầu bổ sung cho AI
         if "extra_notes_val" not in st.session_state:
             st.session_state["extra_notes_val"] = DEFAULT_EXTRA_PROMPT
 
@@ -151,7 +169,6 @@ class UIComponent:
 
         st.markdown("---")
 
-        # 2 nút bấm thao tác chính
         col1, col2 = st.columns(2)
         with col1:
             btn_process = st.button(
