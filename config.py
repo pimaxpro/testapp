@@ -43,10 +43,21 @@ Quy tắc:
 - Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
 - vòng lặp để tô màu và gán nhãn theo cấu trúc:
 \foreach \t/\g in {tendiem/gochienthi}{
-		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\g:9 pt)},font=\scriptsize]{$\t$};
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
+	}
+Ví dụ: \foreach \t/\g in {A/30}{
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
 	}
 - pic để đánh dấu góc bằng nhau (nếu có)
 - Đằng sau môi trường \begin{tikzpicture} luôn là \begin{tikzpicture}[line cap=round,line join=round,font=\scriptsize,>=stealth']
+- Nếu các lệnh draw có cùng option thì gộp hết làm một.
+- Nếu vẽ đồ thị hàm số thì phải vẽ theo cấu trúc này: 
+	\tikzset{declare function={f(\x)=log2(\x);}}
+	\begin{scope}
+		\clip (-5,-5) rectangle (5,5);
+		\draw[samples=100] plot[domain=-5:5] (\x, {f(\x)});
+	\end{scope}
+	Không được truyền trực tiếp hàm số vào plot.
 """,
 
     "TIKZ_ONLY": """
@@ -62,10 +73,21 @@ Quy tắc:
 - Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
 - vòng lặp để tô màu và gán nhãn theo cấu trúc:
 \foreach \t/\g in {tendiem/gochienthi}{
-		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\g:9 pt)},font=\scriptsize]{$\t$};
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
+	}
+Ví dụ: \foreach \t/\g in {A/30}{
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
 	}
 - pic để đánh dấu góc bằng nhau (nếu có)
 - Đằng sau môi trường \begin{tikzpicture} luôn là \begin{tikzpicture}[line cap=round,line join=round,font=\scriptsize,>=stealth']
+- Nếu các lệnh draw có cùng option thì gộp hết làm một.
+- Nếu vẽ đồ thị hàm số thì phải vẽ theo cấu trúc này: 
+	\tikzset{declare function={f(\x)=log2(\x);}}
+	\begin{scope}
+		\clip (-5,-5) rectangle (5,5);
+		\draw[samples=100] plot[domain=-5:5] (\x, {f(\x)});
+	\end{scope}
+	Không được truyền trực tiếp hàm số vào plot.
 """,
 
     "EX_TEST_SOLVE": """
@@ -82,9 +104,20 @@ Quy tắc:
 - Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
 - vòng lặp để tô màu và gán nhãn theo cấu trúc:
 \foreach \t/\g in {tendiem/gochienthi}{
-		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\g:9 pt)},font=\scriptsize]{$\t$};
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
+	}
+Ví dụ: \foreach \t/\g in {A/30}{
+		\draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
 	}
 - pic để đánh dấu góc bằng nhau (nếu có)
 - Đằng sau môi trường \begin{tikzpicture} luôn là \begin{tikzpicture}[line cap=round,line join=round,font=\scriptsize,>=stealth']
+- Nếu các lệnh draw có cùng option thì gộp hết làm một.
+- Nếu vẽ đồ thị hàm số thì phải vẽ theo cấu trúc này: 
+	\tikzset{declare function={f(\x)=log2(\x);}}
+	\begin{scope}
+		\clip (-5,-5) rectangle (5,5);
+		\draw[samples=100] plot[domain=-5:5] (\x, {f(\x)});
+	\end{scope}
+	Không được truyền trực tiếp hàm số vào plot.
 """
 }
