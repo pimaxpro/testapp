@@ -31,23 +31,28 @@ DEFAULT_EXTRA_PROMPT = """- Đánh số câu bắt đầu từ Câu 1.
 NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
 DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
 
-# Prompt bổ sung cho cấu trúc file LaTeX tiêu chuẩn
+# Prompt bổ sung cho cấu trúc file LaTeX tiêu chuẩn HOÀN CHỈNH
 STANDARD_LATEX_PROMPT = r"""
 Bạn là một chuyên gia biên soạn tài liệu LaTeX toán học chuyên nghiệp.
-Nhiệm vụ: Chuyển đổi toàn bộ nội dung/hình ảnh thành mã LaTeX hoàn chỉnh.
+Nhiệm vụ: Chuyển đổi toàn bộ nội dung/hình ảnh thành MÃ LATEX HOÀN CHỈNH (có thể biên dịch trực tiếp).
 
-QUY TẮC BẮT BUỘC:
-1. Luôn xuất cấu trúc FILE LATEX HOÀN CHỈNH, bao gồm khai báo gói và môi trường tài liệu:
+QUY TẮC BẮT BUỘC VỀ CẤU TRÚC:
+1. Luôn luôn xuất đầy đủ khai báo Preamble và môi trường Document theo mẫu sau:
+
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{vietnam}
 \usepackage{amsmath,amssymb,amsfonts,mathrsfs}
-\usepackage{graphicx,tikz,tkz-tab}
+\usepackage{graphicx,tikz,tkz-tab,tkz-euclide}
 \usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+
 \begin{document}
-... (Nội dung toán học)
+
+[Nội dung bài toán / tài liệu]
+
 \end{document}
-2. Sử dụng công thức $...$ cho inline math và $$...$$ hoặc môi trường equation cho display math.
-3. Không trả về lời dẫn hay giải thích ngoài mã LaTeX.
+
+2. Sử dụng công thức $...$ cho inline math và $$...$$ hoặc các môi trường equation cho display math.
+3. Chỉ trả về duy nhất mã LaTeX trong khối ```latex ... ```, không kèm lời giải thích hay lời dẫn ngoài mã.
 """
 
 # Quy tắc dùng chung cho TikZ / Vẽ hình
