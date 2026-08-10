@@ -57,7 +57,58 @@ class MathOCRApp:
                 key="native_uploader"
             )
 
+            # --- BẮT ĐẦU PHẦN CHÈN THÊM: Tính năng dán nhiều ảnh từ Clipboard ---
+            # Khởi tạo state để lưu trữ danh sách ảnh được dán và hash để tránh dán đúp
+            if "pasted_items" not in st.session_state:
+                st.session_state["pasted_items"] = []
+            if "pasted_hashes" not in st.session_state:
+                st.session_state["pasted_hashes"] = set()
+
+            try:
+                from streamlit_paste_button import paste_image_button
+                
+                col_btn1, col_btn2 = st.columns([6, 4])
+                with col_btn1:
+                    paste_result = paste_image_button(
+                        label="📋 Nhấn vào đây và Ctrl+V để dán ảnh",
+                        text_color="#ffffff",
+                        background_color="#4F46E5",
+                        hover_background_color="#3730A3"
+                    )
+                with col_btn2:
+                    if st.session_state["pasted_items"]:
+                        if st.button("🗑️ Xóa ảnh dán", use_container_width=True):
+                            st.session_state["pasted_items"] = []
+                            st.session_state["pasted_hashes"] = set()
+                            st.rerun()
+
+                # Xử lý khi có ảnh mới được dán
+                if paste_result.image_data is not None:
+                    # Chuyển đổi PIL Image sang bytes
+                    img_byte_arr = io.BytesIO()
+                    paste_result.image_data.save(img_byte_arr, format='PNG')
+                    img_bytes = img_byte_arr.getvalue()
+                    
+                    # Dùng hash để nhận diện ảnh, tránh trường hợp re-run bị cộng dồn ảnh cũ
+                    img_hash = hash(img_bytes)
+
+                    if img_hash not in st.session_state["pasted_hashes"]:
+                        st.session_state["pasted_hashes"].add(img_hash)
+                        idx = len(st.session_state["pasted_items"]) + 1
+                        st.session_state["pasted_items"].append({
+                            "name": f"Pasted_Image_{idx}.png",
+                            "bytes": img_bytes,
+                            "mime": "image/png",
+                            "preview": paste_result.image_data
+                        })
+                        st.rerun() # Rerun ngay để UI cập nhật grid hiển thị ảnh
+            except ImportError:
+                st.warning("Gợi ý: Cài đặt thư viện `streamlit-paste-button` để dùng tính năng dán ảnh (đã có trong requirements).")
+            # --- KẾT THÚC PHẦN CHÈN THÊM ---
+
             current_inputs = []
+            
+            # 1. Thêm các ảnh từ uploader mặc định
             if uploaded_files:
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
@@ -69,7 +120,12 @@ class MathOCRApp:
                         "mime": mime_type,
                         "preview": preview_img
                     })
+            
+            # 2. Thêm các ảnh đã dán từ Clipboard vào chung danh sách
+            if st.session_state["pasted_items"]:
+                current_inputs.extend(st.session_state["pasted_items"])
 
+            # Hiển thị Grid xem trước tất cả các ảnh (Cả Upload và Paste)
             if current_inputs:
                 st.markdown(f"**Đã chọn ({len(current_inputs)} tệp):**")
                 grid = st.columns(3)
