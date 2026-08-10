@@ -3,6 +3,12 @@ import streamlit as st
 from gemini_service import GeminiAPIService
 from config import DEFAULT_EXTRA_PROMPT
 
+try:
+    from streamlit_cookies_controller import CookieController
+    cookie_controller = CookieController()
+except ImportError:
+    cookie_controller = None
+
 class AuthSystem:
     # Danh sách tài khoản & mật khẩu
     USERS = {
@@ -19,6 +25,14 @@ class AuthSystem:
         if "authenticated" not in st.session_state:
             st.session_state["authenticated"] = False
 
+        # --- CHÈN THÊM: Tự động đăng nhập nếu Cookie tồn tại ---
+        if cookie_controller is not None and not st.session_state["authenticated"]:
+            saved_user = cookie_controller.get("remember_user")
+            if saved_user and saved_user in cls.USERS:
+                st.session_state["authenticated"] = True
+                st.session_state["user_display"] = saved_user
+        # --------------------------------------------------------
+
         if not st.session_state["authenticated"]:
             st.markdown("<h2 style='text-align: center; margin-top: 2rem;'>Liên hệ bé Tuấn để có tài khoản nhé!</h2>", unsafe_allow_html=True)
             st.write("")
@@ -28,18 +42,35 @@ class AuthSystem:
                 with st.form("login_form"):
                     username = st.text_input("Tên đăng nhập")
                     password = st.text_input("Mật khẩu", type="password")
+                    
+                    # --- CHÈN THÊM: Tùy chọn nhớ mật khẩu ---
+                    remember_me = st.checkbox("Duy trì đăng nhập (30 ngày)", value=True)
+                    
                     btn_login = st.form_submit_button("Đăng nhập", use_container_width=True)
 
                     if btn_login:
                         if username in cls.USERS and cls.USERS[username] == password:
                             st.session_state["authenticated"] = True
                             st.session_state["user_display"] = username
+                            
+                            # --- CHÈN THÊM: Ghi Cookie nếu chọn Duy trì đăng nhập ---
+                            if remember_me and cookie_controller is not None:
+                                cookie_controller.set("remember_user", username, max_age=30*24*60*60) # 30 ngày
+                            # --------------------------------------------------------
+                            
                             st.toast(f"Xin chào {username}!", icon="👋")
                             st.rerun()
                         else:
                             st.error("Tên đăng nhập hoặc mật khẩu không chính xác!")
             return False
         return True
+
+    @classmethod
+    def logout(cls):
+        """Xóa trạng thái phiên và làm sạch Cookie"""
+        st.session_state["authenticated"] = False
+        if cookie_controller is not None:
+            cookie_controller.remove("remember_user")
 
 
 class UIComponent:
