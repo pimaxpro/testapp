@@ -34,7 +34,8 @@ class MathOCRApp:
                 st.markdown(f"👤 **`{user_name}`**")
             with col_logout:
                 if st.button("Đăng xuất", use_container_width=True):
-                    st.session_state["authenticated"] = False
+                    # --- CHÈN THÊM: Gọi hàm logout để xóa cả cookie ---
+                    AuthSystem.logout()
                     st.rerun()
 
         UIComponent.render_header()
