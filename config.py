@@ -22,29 +22,29 @@ CUSTOM_CSS = """
     </style>
 """
 
-# Định dạng mặc định bổ sung cho AI
-DEFAULT_EXTRA_PROMPT = """- Tái tạo chính xác từng dòng, đoạn văn và thứ tự trong file gốc.
-- Không tự ý thay đổi nội dung toán học hay các công thức.
-- Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX.
-- Chuyển chính xác cả footer, header của văn bản (nếu có)
-- Nếu có tcolorbox thì phải chuyển sang chính xác kể cả màu sắc"""
-
-# Lọc các model không hỗ trợ Vision
-NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
-DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
-
-# Quy tắc dùng chung cho TikZ / Vẽ hình
-TIKZ_RULES = r"""
-- Bán kính đường tròn hay các yếu tố về độ dài thì phải sử dụng \pgfmathsetmacro
-- Định nghĩa điểm bằng tọa độ cực, còn nếu có yếu tố tịnh tiến hoặc vị tự hoặc quay hoặc hình chiếu thì cũng phải định nghĩa theo các phép đó. Sử dụng vòng lặp để định nghĩa.
-- Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
-- Vòng lặp để tô màu và gán nhãn theo cấu trúc:
-\foreach \t/\g in {tendiem/gochienthi}{
-        \draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
-    }
-Ví dụ: \foreach \t/\g in {A/30}{
-        \draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
-    }
+    # Định dạng mặc định bổ sung cho AI
+    DEFAULT_EXTRA_PROMPT = """- Tái tạo chính xác từng dòng, đoạn văn và thứ tự trong file gốc.
+    - Không tự ý thay đổi nội dung toán học hay các công thức.
+    - Xuất mã LaTeX thụt lề rõ ràng, chuẩn đẹp để copy thẳng vào file TeX.
+    - Chuyển chính xác cả footer, header của văn bản (nếu có)
+    - Nếu có tcolorbox thì phải chuyển sang chính xác kể cả màu sắc"""
+    
+    # Lọc các model không hỗ trợ Vision
+    NON_VISION_KEYWORDS = ["tts", "audio", "embed", "text-only", "imagen"]
+    DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+    
+    # Quy tắc dùng chung cho TikZ / Vẽ hình
+    TIKZ_RULES = r"""
+    - Bán kính đường tròn hay các yếu tố về độ dài thì phải sử dụng \pgfmathsetmacro
+    - Định nghĩa điểm bằng tọa độ cực, còn nếu có yếu tố tịnh tiến hoặc vị tự hoặc quay hoặc hình chiếu thì cũng phải định nghĩa theo các phép đó. Sử dụng vòng lặp để định nghĩa.
+    - Nếu các điểm là giao của các path (đoạn thẳng, đường tròn) thì phải dùng lệnh intersection
+    - Vòng lặp để tô màu và gán nhãn theo cấu trúc:
+    \foreach \t/\g in {tendiem/gochienthi}{
+            \draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
+        }
+    Ví dụ: \foreach \t/\g in {A/30}{
+            \draw[fill=white] (\t) circle (1.5 pt) node[shift={(\gochienthi:9 pt)},font=\scriptsize]{$\t$};
+        }
 - Pic để đánh dấu góc bằng nhau (nếu có)
 - Đằng sau môi trường \begin{tikzpicture} luôn là \begin{tikzpicture}[line cap=round,line join=round,font=\scriptsize,>=stealth']
 - Nếu các lệnh draw có cùng option thì gộp hết làm một.
@@ -95,7 +95,7 @@ QUY TẮC PHÂN LOẠI VÀ CHUYỂN ĐỔI CÂU HỎI (BẮT BUỘC):
    - Đồ thị, hình học (không gian / phẳng): Tự động dựng mã TikZ chuẩn chỉnh theo quy tắc TikZ bên dưới.
    - Bảng biến thiên / Bảng xét dấu: Tự động nhận diện và chuyển sang gói `tkz-tab`.
    - Bảng biểu thông thường: Dùng môi trường `tabular` hoặc `table` chuẩn.
-
+   - Không sử dụng gói tkz-euclide
 3. QUY TẮC LOẠI BỎ RÁC:
    - TỰ ĐỘNG LOẠI BỎ các bảng kẻ phiếu tô đáp án, khung chọn Đúng/Sai rác ở cuối đề.
 
@@ -109,7 +109,7 @@ QUY TẮC PHÂN LOẠI VÀ CHUYỂN ĐỔI CÂU HỎI (BẮT BUỘC):
 \usepackage{array,multirow,multicol,booktabs}
 \usepackage[dethi]{ex_test}
 \usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
-
+\usepackage{tabularx}
 \begin{document}
 
 [Toàn bộ nội dung đã chuyển đổi chuẩn ex_test]
