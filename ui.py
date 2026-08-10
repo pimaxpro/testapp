@@ -43,13 +43,6 @@ class AuthSystem:
 
 
 class UIComponent:
-    # --- KHU VỰC LƯU TRỮ API KEY DÙNG CHUNG ---
-    SYSTEM_API_KEYS = {
-        "Key Hệ Thống 1 (Chính)": "AQ.Ab8RN6JSTPEyTBO10vXTdGC30zjMrIGujRai3ikxEqxMIhDqgw",
-        "Key Hệ Thống 2 (Dự phòng 1)": "AQ.Ab8RN6ISXWkkDyl5IyuBBp10uzzzPjr-ISChYAoe48ORIRemTQ",
-        "Key Hệ Thống 3 (Dự phòng 2)": "AIzaSyDHVyYJIYBPlHZ1kY_36MrTTjqmALRTugI"
-    }
-
     @staticmethod
     def render_header():
         st.markdown("<h1 class='header-title'>Tổ toán cấp 3 Minh Hoàng</h1>", unsafe_allow_html=True)
@@ -61,37 +54,29 @@ class UIComponent:
         with st.sidebar:
             st.markdown("## ⚙️ Cấu hình & Chức năng")
             
-            # --- Nhóm 1: Cấu hình API Key ---
+            # --- Nhóm 1: Cấu hình API Key (Đã làm lại UI) ---
             st.markdown("##### 🔑 Cấu hình Gemini API Key")
-            key_source = st.radio(
-                "Nguồn API Key:",
-                options=["Dùng Key mặc định (Kho hệ thống)", "Nhập Key cá nhân"],
-                index=0,
-                horizontal=True,
+            
+            # Thêm dòng chú thích mờ nhỏ gọn, thanh lịch
+            st.markdown("<p style='font-size: 0.85em; color: #555; margin-bottom: 5px;'>Nhập API Key cá nhân của bạn để sử dụng AI (bắt đầu bằng AIzaSy...)</p>", unsafe_allow_html=True)
+
+            saved_key = st.session_state.get("api_key_custom", "")
+            active_api_key = st.text_input(
+                "Nhập Gemini API Key cá nhân:", 
+                value=saved_key, 
+                type="password",
+                placeholder="AIzaSy...",
                 label_visibility="collapsed"
             )
-
-            active_api_key = ""
-            if key_source == "Dùng Key mặc định (Kho hệ thống)":
-                selected_key_label = st.selectbox(
-                    "Chọn Key hệ thống khả dụng:",
-                    options=list(UIComponent.SYSTEM_API_KEYS.keys()),
-                    label_visibility="collapsed"
-                )
-                active_api_key = UIComponent.SYSTEM_API_KEYS.get(selected_key_label, "")
-                st.caption("🟢 *Đang sử dụng API Key hệ thống.*")
+            st.session_state["api_key_custom"] = active_api_key
+            
+            # Hiển thị trạng thái bằng UI Box đẹp mắt thay vì text caption
+            if active_api_key:
+                st.success("Đã ghi nhận API Key", icon="✅")
             else:
-                saved_key = st.session_state.get("api_key_custom", "")
-                active_api_key = st.text_input(
-                    "Nhập Gemini API Key cá nhân:", 
-                    value=saved_key, 
-                    type="password",
-                    placeholder="AIzaSy...",
-                    label_visibility="collapsed"
-                )
-                st.session_state["api_key_custom"] = active_api_key
-                if active_api_key:
-                    st.caption("🟢 *Đã ghi nhận Key cá nhân.*")
+                st.info("Vui lòng nhập API Key để tiếp tục", icon="ℹ️")
+
+            st.markdown("---") # Đường kẻ mờ ngăn cách cho sidebar thoáng hơn
 
             # Cập nhật Key vào Session State và gán trực tiếp cho service
             st.session_state["api_key"] = active_api_key
