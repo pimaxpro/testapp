@@ -3,3 +3,4 @@ google-genai
 streamlit-paste-button
 streamlit-code-editor
 Pillow
+streamlit-cookies-controller
