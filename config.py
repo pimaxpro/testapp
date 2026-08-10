@@ -95,7 +95,6 @@ QUY TẮC PHÂN LOẠI VÀ CHUYỂN ĐỔI CÂU HỎI (BẮT BUỘC):
    - Đồ thị, hình học (không gian / phẳng): Tự động dựng mã TikZ chuẩn chỉnh theo quy tắc TikZ bên dưới.
    - Bảng biến thiên / Bảng xét dấu: Tự động nhận diện và chuyển sang gói `tkz-tab`.
    - Bảng biểu thông thường: Dùng môi trường `tabular` hoặc `table` chuẩn.
-   - Không sử dụng gói tkz-euclide
 3. QUY TẮC LOẠI BỎ RÁC:
    - TỰ ĐỘNG LOẠI BỎ các bảng kẻ phiếu tô đáp án, khung chọn Đúng/Sai rác ở cuối đề.
 
@@ -109,7 +108,6 @@ QUY TẮC PHÂN LOẠI VÀ CHUYỂN ĐỔI CÂU HỎI (BẮT BUỘC):
 \usepackage{array,multirow,multicol,booktabs}
 \usepackage[dethi]{ex_test}
 \usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
-\usepackage{tabularx}
 \begin{document}
 
 [Toàn bộ nội dung đã chuyển đổi chuẩn ex_test]
