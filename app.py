@@ -34,7 +34,6 @@ class MathOCRApp:
                 st.markdown(f"👤 **`{user_name}`**")
             with col_logout:
                 if st.button("Đăng xuất", use_container_width=True):
-                    # --- CHÈN THÊM: Gọi hàm logout để xóa cả cookie ---
                     AuthSystem.logout()
                     st.rerun()
 
@@ -58,12 +57,15 @@ class MathOCRApp:
                 key="native_uploader"
             )
 
-            # --- BẮT ĐẦU PHẦN CHÈN THÊM: Tính năng dán nhiều ảnh từ Clipboard ---
             # Khởi tạo state để lưu trữ danh sách ảnh được dán và hash để tránh dán đúp
             if "pasted_items" not in st.session_state:
                 st.session_state["pasted_items"] = []
             if "pasted_hashes" not in st.session_state:
                 st.session_state["pasted_hashes"] = set()
+                
+            # --- CHÈN THÊM: State lưu trữ ID các ảnh người dùng bấm X xóa lẻ ---
+            if "deleted_hashes" not in st.session_state:
+                st.session_state["deleted_hashes"] = set()
 
             try:
                 from streamlit_paste_button import paste_image_button
@@ -78,19 +80,18 @@ class MathOCRApp:
                     )
                 with col_btn2:
                     if st.session_state["pasted_items"]:
-                        if st.button("🗑️ Xóa ảnh dán", use_container_width=True):
+                        if st.button("🗑️ Xóa tất cả ảnh dán", use_container_width=True):
                             st.session_state["pasted_items"] = []
                             st.session_state["pasted_hashes"] = set()
+                            st.session_state["deleted_hashes"] = set() # Xóa luôn danh sách đen
                             st.rerun()
 
                 # Xử lý khi có ảnh mới được dán
                 if paste_result.image_data is not None:
-                    # Chuyển đổi PIL Image sang bytes
                     img_byte_arr = io.BytesIO()
                     paste_result.image_data.save(img_byte_arr, format='PNG')
                     img_bytes = img_byte_arr.getvalue()
                     
-                    # Dùng hash để nhận diện ảnh, tránh trường hợp re-run bị cộng dồn ảnh cũ
                     img_hash = hash(img_bytes)
 
                     if img_hash not in st.session_state["pasted_hashes"]:
@@ -102,41 +103,67 @@ class MathOCRApp:
                             "mime": "image/png",
                             "preview": paste_result.image_data
                         })
-                        st.rerun() # Rerun ngay để UI cập nhật grid hiển thị ảnh
+                        st.rerun() 
             except ImportError:
                 st.warning("Gợi ý: Cài đặt thư viện `streamlit-paste-button` để dùng tính năng dán ảnh (đã có trong requirements).")
-            # --- KẾT THÚC PHẦN CHÈN THÊM ---
 
             current_inputs = []
             
-            # 1. Thêm các ảnh từ uploader mặc định
+            # 1. Thêm các ảnh từ uploader mặc định (Có kiểm tra danh sách đen)
             if uploaded_files:
                 for file in uploaded_files:
                     file_bytes = file.getvalue()
+                    file_hash = hash(file_bytes)
+                    
+                    # --- CHÈN THÊM: Bỏ qua nếu ảnh này đã bị bấm X ---
+                    if file_hash in st.session_state["deleted_hashes"]:
+                        continue
+                        
                     mime_type = file.type
                     preview_img = Image.open(io.BytesIO(file_bytes)) if mime_type != "application/pdf" else None
                     current_inputs.append({
+                        "id": file_hash, # Gắn ID để quản lý xóa
                         "name": file.name,
                         "bytes": file_bytes,
                         "mime": mime_type,
                         "preview": preview_img
                     })
             
-            # 2. Thêm các ảnh đã dán từ Clipboard vào chung danh sách
+            # 2. Thêm các ảnh đã dán từ Clipboard (Có kiểm tra danh sách đen)
             if st.session_state["pasted_items"]:
-                current_inputs.extend(st.session_state["pasted_items"])
+                for item in st.session_state["pasted_items"]:
+                    item_hash = hash(item["bytes"])
+                    
+                    # --- CHÈN THÊM: Bỏ qua nếu ảnh này đã bị bấm X ---
+                    if item_hash not in st.session_state["deleted_hashes"]:
+                        # Cập nhật ID cho ảnh dán để đưa vào lưới
+                        item_copy = item.copy()
+                        item_copy["id"] = item_hash
+                        current_inputs.append(item_copy)
 
-            # Hiển thị Grid xem trước tất cả các ảnh (Cả Upload và Paste)
+            # Hiển thị Grid xem trước tất cả các ảnh và NÚT X
             if current_inputs:
                 st.markdown(f"**Đã chọn ({len(current_inputs)} tệp):**")
                 grid = st.columns(3)
                 for idx, item in enumerate(current_inputs):
                     with grid[idx % 3]:
                         with st.container(border=True):
+                            # --- CHÈN THÊM: Header chứa tên ảnh và nút Xóa ---
+                            col_title, col_del = st.columns([7, 3], vertical_alignment="center")
+                            with col_title:
+                                # Cắt ngắn tên nếu quá dài để UI không bị vỡ
+                                display_name = item['name'] if len(item['name']) < 15 else item['name'][:12] + "..."
+                                st.caption(f"📄 {display_name}")
+                            with col_del:
+                                if st.button("❌", key=f"del_{item['id']}_{idx}", help="Xóa ảnh này"):
+                                    st.session_state["deleted_hashes"].add(item["id"])
+                                    st.rerun()
+                            
+                            # Hiển thị ảnh
                             if item.get("preview"):
-                                st.image(item["preview"], caption=item["name"], use_container_width=True)
+                                st.image(item["preview"], use_container_width=True)
                             else:
-                                st.write(f"`{item['name']}`")
+                                st.write("_(Tệp PDF)_")
 
             st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
